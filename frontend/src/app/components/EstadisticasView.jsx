@@ -1,0 +1,525 @@
+import { useState, useEffect } from "react";
+import { BarChart3, DollarSign, Package, Banknote, CreditCard, TrendingDown, Wallet, RefreshCw, PackageMinus, Unlock, Lock, BookUp, Clock, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
+import api from "../../services/api.js";
+import { Loader } from "./Loader.jsx";
+
+// Formateador de fecha en hora Argentina
+const arFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+
+function hoyAR() {
+  return arFmt.format(new Date());
+}
+
+// Lunes de la semana de una fecha "YYYY-MM-DD"
+function getMondayOf(dateStr) {
+  const d = new Date(dateStr + "T12:00:00");
+  const day = d.getDay(); // 0=Dom
+  const diff = day === 0 ? 6 : day - 1;
+  d.setDate(d.getDate() - diff);
+  return arFmt.format(d);
+}
+
+// Domingo de la semana a partir del lunes "YYYY-MM-DD"
+function getSundayOf(mondayStr) {
+  const d = new Date(mondayStr + "T12:00:00");
+  d.setDate(d.getDate() + 6);
+  return arFmt.format(d);
+}
+
+// "YYYY-MM-DD" → "DD/MM"
+function fmtDDMM(str) {
+  return str.slice(8, 10) + "/" + str.slice(5, 7);
+}
+
+const MONTH_NAMES_LONG  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MONTH_NAMES_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const DAY_NAMES_SHORT   = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+
+export function EstadisticasView() {
+  const [period, setPeriod]               = useState("mensual");
+  const [cajasCerradas, setCajasCerradas] = useState([]);
+  const [gastosFijos, setGastosFijos]     = useState([]);
+  const [gastosDiarios, setGastosDiarios] = useState([]);
+  const [productos, setProductos]         = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [restockCost, setRestockCost]     = useState(0);
+  const [activityLog, setActivityLog]     = useState([]);
+  const [cajaStatus, setCajaStatus]       = useState({ isOpen: false, register: null });
+  const [transaccionesCaja, setTransaccionesCaja] = useState([]);
+  const [histTab, setHistTab]             = useState("mes"); // "mes" | "semana"
+  const [expandedHist, setExpandedHist]   = useState(null);
+  const [showMontos, setShowMontos]       = useState(false);
+
+  const LOG_ICONS = { Unlock, Lock, Wallet, BookUp, PackageMinus, Package };
+
+  useEffect(() => {
+    setLoading(true);
+    Promise.allSettled([
+      api.get("/cash-register/closed"),
+      api.get("/fixed-expenses"),
+      api.get("/daily-expenses"),
+      api.get("/products"),
+      api.get("/stats/restock"),
+      api.get("/stats/activity-log"),
+      api.get("/cash-register/status"),
+    ])
+      .then(async ([rCajas, rFijos, rDiarios, rProd, rRestock, rLog, rStatus]) => {
+        if (rCajas.status   === "fulfilled") setCajasCerradas(rCajas.value.data);
+        if (rFijos.status   === "fulfilled") setGastosFijos(rFijos.value.data);
+        if (rDiarios.status === "fulfilled") setGastosDiarios(rDiarios.value.data);
+        if (rProd.status    === "fulfilled") setProductos(rProd.value.data);
+        if (rRestock.status === "fulfilled") setRestockCost(rRestock.value.data.restockCost || 0);
+        if (rLog.status     === "fulfilled") setActivityLog(rLog.value.data);
+        if (rStatus.status  === "fulfilled") {
+          const status = rStatus.value.data;
+          setCajaStatus(status);
+          if (status.isOpen && status.register) {
+            try {
+              const txRes = await api.get(`/transactions/register/${status.register.id}`);
+              setTransaccionesCaja(txRes.data);
+            } catch { setTransaccionesCaja([]); }
+          } else {
+            setTransaccionesCaja([]);
+          }
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  // ── Cutoffs de período ────────────────────────────────────────────────────
+  const today        = hoyAR();                          // "YYYY-MM-DD"
+  const semanaInicio = getMondayOf(today);               // lunes de esta semana
+  const mesInicio    = today.slice(0, 8) + "01";         // 1° del mes actual
+
+  const periodCutoff = period === "semanal" ? semanaInicio
+                     : period === "mensual" ? mesInicio
+                     : null; // "todo" = sin filtro
+
+  const cajasFiltradas = cajasCerradas.filter((c) => {
+    if (!c.closedAt) return false;
+    return periodCutoff ? c.closedAt.slice(0, 10) >= periodCutoff : true;
+  });
+
+  // ── Tarjetas principales ──────────────────────────────────────────────────
+  const revenue  = cajasFiltradas.reduce((s, c) => s + (c.totalIngresos     || 0), 0);
+  const efectivo = cajasFiltradas.reduce((s, c) => s + (c.totalEfectivo     || 0), 0);
+  const virtual  = cajasFiltradas.reduce((s, c) => s + (c.totalTransferencia|| 0), 0);
+
+  // ── Gráfico de evolución ──────────────────────────────────────────────────
+  const chartData = (() => {
+    if (period === "semanal") {
+      // Lun → Dom de la semana actual
+      const monday = new Date(semanaInicio + "T12:00:00");
+      const slots = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date(monday);
+        d.setDate(monday.getDate() + i);
+        const dateStr = arFmt.format(d);
+        return { label: DAY_NAMES_SHORT[new Date(dateStr + "T12:00:00").getDay()], value: 0, dateStr };
+      });
+      cajasFiltradas.forEach((c) => {
+        const slot = slots.find((s) => s.dateStr === c.closedAt.slice(0, 10));
+        if (slot) slot.value += Number(c.totalIngresos) || 0;
+      });
+      return slots;
+
+    } else if (period === "mensual") {
+      // Semanas del mes actual (lunes a domingo), solapando inicio de mes
+      const firstMonday = new Date(getMondayOf(mesInicio) + "T12:00:00");
+      const lastDay     = new Date(today + "T12:00:00");
+      const slots = [];
+      let cur = new Date(firstMonday);
+      let semNum = 1;
+      while (cur <= lastDay) {
+        const startStr = arFmt.format(cur);
+        const endD = new Date(cur); endD.setDate(cur.getDate() + 6);
+        const endStr = arFmt.format(endD);
+        if (endStr >= mesInicio) {
+          slots.push({ label: `Sem ${semNum}`, value: 0, startStr, endStr });
+          semNum++;
+        }
+        cur.setDate(cur.getDate() + 7);
+      }
+      cajasFiltradas.forEach((c) => {
+        const ds = c.closedAt.slice(0, 10);
+        const slot = slots.find((s) => ds >= s.startStr && ds <= s.endStr);
+        if (slot) slot.value += Number(c.totalIngresos) || 0;
+      });
+      return slots.length ? slots : [{ label: "Sin datos", value: 0 }];
+
+    } else {
+      // Todo: por mes
+      const map = {};
+      cajasCerradas.forEach((c) => {
+        if (!c.closedAt) return;
+        const k = c.closedAt.slice(0, 7);
+        map[k] = (map[k] || 0) + (Number(c.totalIngresos) || 0);
+      });
+      const sorted = Object.keys(map).sort();
+      if (!sorted.length) return [{ label: "Sin datos", value: 0 }];
+      return sorted.map((k) => ({
+        label: MONTH_NAMES_SHORT[parseInt(k.slice(5, 7)) - 1] + " '" + k.slice(2, 4),
+        value: map[k],
+      }));
+    }
+  })();
+
+  // ── Gastos filtrados ──────────────────────────────────────────────────────
+  const gastosDiariosFiltrados = gastosDiarios.filter((g) => {
+    if (!g.createdAt) return false;
+    return periodCutoff ? g.createdAt.slice(0, 10) >= periodCutoff : true;
+  });
+
+  const totalFijos           = gastosFijos.reduce((s, g) => s + (Number(g.amount) || 0), 0);
+  const totalDiarios         = gastosDiariosFiltrados.reduce((s, g) => s + (Number(g.amount) || 0), 0);
+  const totalGastosOperativos = totalFijos + totalDiarios;
+  const invertidoStock       = productos.reduce((s, p) => s + ((Number(p.cost)||0) * (Number(p.stock)||0)), 0);
+
+  const gastosDiariosEfectivo = gastosDiariosFiltrados.filter((g) => g.method === "efectivo").reduce((s,g)=>s+(Number(g.amount)||0),0);
+  const gastosDiariosVirtual  = gastosDiariosFiltrados.filter((g) => g.method === "transferencia").reduce((s,g)=>s+(Number(g.amount)||0),0);
+  const disponibleEfectivo    = efectivo - gastosDiariosEfectivo;
+  const disponibleVirtual     = virtual  - gastosDiariosVirtual;
+
+  // ── Caja final del día ────────────────────────────────────────────────────
+  const { cajaFinalDelDia, fondoInicialCaja, efectivoVentasCaja, extraccionesEfectivoCaja, hayCajaHoy } = (() => {
+    if (!cajaStatus.isOpen || !cajaStatus.register)
+      return { cajaFinalDelDia:0, fondoInicialCaja:0, efectivoVentasCaja:0, extraccionesEfectivoCaja:0, hayCajaHoy:false };
+    const fondoInicial    = Number(cajaStatus.register.initialCash) || 0;
+    const efectivoVentas  = transaccionesCaja.reduce((s, t) =>
+      s + (t.payments||[]).filter((p)=>(p.methodName||"").toLowerCase().includes("efectivo")).reduce((a,p)=>a+(Number(p.amount)||0),0), 0);
+    const extracciones    = gastosDiarios
+      .filter((g) => g.registerId === cajaStatus.register.id && g.method === "efectivo")
+      .reduce((s,g)=>s+(Number(g.amount)||0),0);
+    return { cajaFinalDelDia: fondoInicial + efectivoVentas - extracciones, fondoInicialCaja: fondoInicial, efectivoVentasCaja: efectivoVentas, extraccionesEfectivoCaja: extracciones, hayCajaHoy: true };
+  })();
+
+  // ── Historial por mes ─────────────────────────────────────────────────────
+  const historicoPorMes = (() => {
+    const map = {};
+    cajasCerradas.forEach((c) => {
+      if (!c.closedAt) return;
+      const k = c.closedAt.slice(0, 7);
+      if (!map[k]) map[k] = { ingresos:0, efectivo:0, virtual:0, cajas:0 };
+      map[k].ingresos += Number(c.totalIngresos)      || 0;
+      map[k].efectivo += Number(c.totalEfectivo)      || 0;
+      map[k].virtual  += Number(c.totalTransferencia) || 0;
+      map[k].cajas    += 1;
+    });
+    return Object.keys(map).sort().reverse().map((k) => ({
+      key: k,
+      label: MONTH_NAMES_LONG[parseInt(k.slice(5,7))-1] + " " + k.slice(0,4),
+      isCurrent: k === today.slice(0,7),
+      ...map[k],
+    }));
+  })();
+
+  // ── Historial por semana ──────────────────────────────────────────────────
+  const historicoPorSemana = (() => {
+    const map = {};
+    cajasCerradas.forEach((c) => {
+      if (!c.closedAt) return;
+      const monday = getMondayOf(c.closedAt.slice(0,10));
+      if (!map[monday]) map[monday] = { ingresos:0, efectivo:0, virtual:0, cajas:0 };
+      map[monday].ingresos += Number(c.totalIngresos)      || 0;
+      map[monday].efectivo += Number(c.totalEfectivo)      || 0;
+      map[monday].virtual  += Number(c.totalTransferencia) || 0;
+      map[monday].cajas    += 1;
+    });
+    return Object.keys(map).sort().reverse().map((monday) => ({
+      key: monday,
+      label: fmtDDMM(monday) + " – " + fmtDDMM(getSundayOf(monday)),
+      isCurrent: monday === semanaInicio,
+      ...map[monday],
+    }));
+  })();
+
+  // ── Misc ──────────────────────────────────────────────────────────────────
+  const maxChartValue   = Math.max(...chartData.map((d) => d.value), 1);
+  const balanceNeto     = revenue - totalGastosOperativos;
+  const margenPorcentaje = revenue > 0 ? (balanceNeto / revenue) * 100 : 0;
+
+  const monto = (value, cls = "") =>
+    showMontos
+      ? <span className={cls}>${value}</span>
+      : <span className="tracking-widest select-none text-[#cc679c]/30 font-black">••••</span>;
+
+  const PERIOD_LABELS   = { todo:"Todo", mensual:"Mensual", semanal:"Semanal" };
+  const chartTitle      = period === "semanal" ? `Semana ${fmtDDMM(semanaInicio)} – ${fmtDDMM(getSundayOf(semanaInicio))}`
+                        : period === "mensual" ? `${MONTH_NAMES_LONG[parseInt(mesInicio.slice(5,7))-1]} ${mesInicio.slice(0,4)}`
+                        : "Histórico por mes";
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  return (
+    <div className="flex-1 p-4 pb-20 md:p-8 overflow-y-auto relative">
+      {loading && <Loader />}
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8 gap-3">
+        <div>
+          <h1 className="text-[#cc679c] font-bold text-2xl md:text-4xl mb-1 md:mb-2">Estadísticas</h1>
+          <p className="text-[#cc679c]/80 font-medium text-sm">Rendimiento y métricas de tu local</p>
+        </div>
+        <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
+          <button
+            onClick={() => setShowMontos((v) => !v)}
+            title={showMontos ? "Ocultar montos" : "Mostrar montos"}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all shadow-sm ${showMontos ? "bg-[#cc679c] text-[#eceae7] border-[#cc679c]" : "bg-[#f4f3f0] text-[#cc679c]/60 border-[#e5e7eb] hover:text-[#cc679c]"}`}
+          >
+            {showMontos ? <Eye size={16} /> : <EyeOff size={16} />}
+            {showMontos ? "Ocultar montos" : "Mostrar montos"}
+          </button>
+          <div className="bg-[#f4f3f0] p-1 rounded-xl border border-[#e5e7eb] shadow-sm flex gap-1">
+            {["todo","mensual","semanal"].map((p) => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`px-4 md:px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm ${period === p ? "bg-[#cc679c] text-[#eceae7]" : "bg-transparent text-[#cc679c]/70 hover:text-[#cc679c]"}`}>
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Tarjetas stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
+        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-green-600"><DollarSign size={20}/><h3 className="text-[#cc679c]/80 font-bold">Ingresos Totales</h3></div>
+          <p className="text-3xl font-black">{monto(revenue.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
+        </div>
+        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-green-600"><Banknote size={20}/><h3 className="text-[#cc679c]/80 font-bold">En Efectivo</h3></div>
+          <p className="text-3xl font-black">{monto(efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
+          <p className="text-[#cc679c]/60 font-medium text-sm mt-2">{revenue>0?((efectivo/revenue)*100).toFixed(1):0}% del total</p>
+        </div>
+        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#5db8d1]/30 shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-[#5db8d1]"><CreditCard size={20}/><h3 className="text-[#cc679c]/80 font-bold">Virtual</h3></div>
+          <p className="text-3xl font-black">{monto(virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#5db8d1]")}</p>
+          <p className="text-[#5db8d1]/60 font-medium text-sm mt-2">Tarjetas, transferencias y QR</p>
+        </div>
+        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-[#cc679c]"><RefreshCw size={20}/><h3 className="text-[#cc679c]/80 font-bold">Gasto de Restock</h3></div>
+          <p className="text-3xl font-black">{monto(restockCost.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
+          <p className="text-[#cc679c]/60 font-medium text-sm mt-2">Costo para reponer lo vendido</p>
+        </div>
+        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-green-400/30 shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-green-600"><Wallet size={20}/><h3 className="text-[#cc679c]/80 font-bold">Caja final del día</h3></div>
+          <p className="text-3xl font-black">{monto(cajaFinalDelDia.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-green-700")}</p>
+          <p className="text-[#cc679c]/60 font-medium text-sm mt-2">
+            {hayCajaHoy
+              ? `Fondo $${fondoInicialCaja.toFixed(2)} + ventas $${efectivoVentasCaja.toFixed(2)}${extraccionesEfectivoCaja>0?` − $${extraccionesEfectivoCaja.toFixed(2)}`:""}` 
+              : "Abrí la caja para ver el total"}
+          </p>
+        </div>
+      </div>
+
+      {/* Balance Financiero */}
+      <h2 className="text-[#5db8d1] font-bold text-2xl mb-6 mt-4">Balance Financiero</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-[#e3ac4d]"><Package size={20}/><h3 className="text-[#cc679c]/80 font-bold">Invertido en Stock</h3></div>
+          <p className="text-3xl font-black">{monto(invertidoStock.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
+        </div>
+        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm flex flex-col">
+          <div className="flex items-center gap-3 mb-4 text-[#cc679c]">
+            <TrendingDown size={20}/>
+            <h3 className="text-[#cc679c]/80 font-bold">Gastos Operativos</h3>
+          </div>
+          <p className="text-3xl font-black mb-4">{monto(totalGastosOperativos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
+          <div className="border-t border-[#e5e7eb] pt-4 mt-auto">
+            <p className="text-xs text-[#cc679c]/70 mb-3 uppercase tracking-wider font-bold">Detalle de Gastos</p>
+            <div className="space-y-3 max-h-32 overflow-y-auto pr-2">
+              {gastosFijos.length===0 && gastosDiariosFiltrados.length===0 && (
+                <p className="text-[#cc679c]/60 font-medium text-sm">Sin gastos en este período</p>
+              )}
+              {gastosFijos.map((g) => (
+                <div key={`fijo-${g.id}`} className="flex justify-between items-center text-sm p-2.5 bg-[#eceae7] rounded-lg border border-[#e5e7eb] shadow-sm">
+                  <div className="flex items-center gap-2 truncate pr-2">
+                    <span className="shrink-0 text-[10px] font-black uppercase tracking-wide bg-[#cc679c]/10 text-[#cc679c] px-1.5 py-0.5 rounded">Fijo</span>
+                    <div className="flex flex-col truncate">
+                      <span className="text-[#cc679c] truncate font-bold">{g.name}</span>
+                      <span className="text-xs text-[#cc679c]/60 font-medium">Recurrente mensual</span>
+                    </div>
+                  </div>
+                  <span className="text-[#cc679c] font-black shrink-0">-${Number(g.amount).toFixed(2)}</span>
+                </div>
+              ))}
+              {gastosDiariosFiltrados.map((g) => (
+                <div key={`diario-${g.id}`} className="flex justify-between items-center text-sm p-2.5 bg-[#eceae7] rounded-lg border border-[#e5e7eb] shadow-sm">
+                  <div className="flex items-center gap-2 truncate pr-2">
+                    <span className="shrink-0 text-[10px] font-black uppercase tracking-wide bg-[#e3ac4d]/20 text-[#e3ac4d] px-1.5 py-0.5 rounded">Extracción</span>
+                    <div className="flex flex-col truncate">
+                      <span className="text-[#cc679c] truncate font-bold">{g.reason}</span>
+                      <span className="text-xs text-[#cc679c]/60 font-medium">
+                        {new Date(g.createdAt.replace(" ","T")).toLocaleDateString("es-AR")} • {new Date(g.createdAt.replace(" ","T")).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",hour12:false})}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[#cc679c] font-black shrink-0">-${Number(g.amount).toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className={`rounded-xl p-6 border flex flex-col shadow-sm ${balanceNeto>=0?"bg-[#f4f3f0] border-green-400/30":"bg-[#f4f3f0] border-red-400/30"}`}>
+          <div className={`flex items-center gap-3 mb-2 ${balanceNeto>=0?"text-green-600":"text-[#cc679c]"}`}>
+            <Wallet size={20}/><h3 className="font-bold">Balance Neto</h3>
+          </div>
+          <p className="text-3xl font-black">
+            {showMontos
+              ? <span className={balanceNeto>=0?"text-green-600":"text-[#cc679c]"}>{balanceNeto>=0?"+":"-"}${Math.abs(balanceNeto).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+              : <span className="tracking-widest select-none text-[#cc679c]/30 font-black">••••</span>}
+          </p>
+          <p className={`text-sm mt-1 mb-4 font-bold ${balanceNeto>=0?"text-green-600/70":"text-[#cc679c]/70"}`}>
+            Rentabilidad: {margenPorcentaje.toFixed(1)}%
+          </p>
+          <div className={`border-t pt-4 mt-auto space-y-2 ${balanceNeto>=0?"border-green-600/20":"border-[#cc679c]/20"}`}>
+            <p className="text-xs text-[#cc679c]/70 uppercase tracking-wider font-bold mb-1">Liquidez Disponible</p>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-[#cc679c] font-medium">En Efectivo</span>
+              {showMontos ? <span className="text-green-600 font-bold">${disponibleEfectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span> : <span className="tracking-widest text-[#cc679c]/30 font-black select-none">••••</span>}
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-[#cc679c] font-medium">Virtual</span>
+              {showMontos ? <span className="text-[#5db8d1] font-bold">${disponibleVirtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span> : <span className="tracking-widest text-[#cc679c]/30 font-black select-none">••••</span>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Gráfico + Movimientos */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+        <div className="lg:col-span-2 bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-8">
+            <BarChart3 className="text-[#cc679c]" size={24}/>
+            <h2 className="text-[#5db8d1] text-xl font-bold">Evolución de Ingresos — {chartTitle}</h2>
+          </div>
+          <div className="h-64 flex items-end justify-between gap-2 md:gap-4 mt-8">
+            {chartData.map((d, i) => {
+              const h = Math.max((d.value / maxChartValue) * 100, 5);
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-3 group relative">
+                  <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-[#cc679c] text-[#eceae7] text-xs font-bold py-1 px-2 rounded pointer-events-none shadow-md">
+                    ${d.value.toFixed(2)}
+                  </div>
+                  <div className="w-full max-w-[4rem] bg-[#e3ac4d] hover:bg-[#cc679c] transition-colors rounded-t-sm shadow-sm" style={{height:`${h}%`}}/>
+                  <span className="text-xs text-[#cc679c]/80 font-bold whitespace-nowrap">{d.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] p-6 flex flex-col shadow-sm">
+          <div className="flex items-center gap-3 mb-6">
+            <Clock className="text-[#cc679c]" size={24}/>
+            <h2 className="text-[#5db8d1] text-xl font-bold">Historial de Movimientos</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-3 custom-scrollbar">
+            {activityLog.length === 0 ? (
+              <p className="text-[#cc679c]/60 font-medium text-sm">No hay movimientos registrados</p>
+            ) : activityLog.map((log) => {
+              const Icon = LOG_ICONS[log.icon] || Clock;
+              return (
+                <div key={log.id} className="bg-[#eceae7] rounded-lg p-3 border border-[#e5e7eb] shadow-sm flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${log.bg} ${log.color} shrink-0 mt-0.5`}><Icon size={16}/></div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[#cc679c] text-sm font-bold">{log.type}</p>
+                    <p className="text-[#cc679c]/70 font-medium text-xs leading-relaxed">{log.details}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <span className="text-[#cc679c]/80 font-bold text-xs block">{new Date(log.date.replace(" ","T")).toLocaleDateString("es-AR")}</span>
+                    <span className="text-[#cc679c]/60 font-medium text-[10px]">{new Date(log.date.replace(" ","T")).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",hour12:false})}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Historial por período ────────────────────────────────────────── */}
+      <h2 className="text-[#5db8d1] font-bold text-2xl mb-4">Historial por Período</h2>
+      <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] shadow-sm overflow-hidden mb-8">
+        {/* Tabs */}
+        <div className="flex border-b border-[#e5e7eb]">
+          {[{id:"mes",label:"Por mes"},{id:"semana",label:"Por semana"}].map(({id,label})=>(
+            <button key={id} onClick={()=>{setHistTab(id);setExpandedHist(null);}}
+              className={`px-6 py-3 text-sm font-bold transition-all ${histTab===id?"bg-[#cc679c] text-[#eceae7]":"text-[#cc679c]/70 hover:text-[#cc679c]"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tabla */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#e5e7eb]">
+                <th className="text-left p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">
+                  {histTab==="mes" ? "Mes" : "Semana"}
+                </th>
+                <th className="text-right p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">Ingresos</th>
+                <th className="text-right p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">Efectivo</th>
+                <th className="text-right p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">Virtual</th>
+                <th className="text-right p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">Cierres</th>
+                <th className="p-4 w-10"/>
+              </tr>
+            </thead>
+            <tbody>
+              {(histTab==="mes" ? historicoPorMes : historicoPorSemana).map((row) => (
+                <>
+                  <tr key={row.key}
+                    onClick={()=>setExpandedHist(expandedHist===row.key?null:row.key)}
+                    className={`border-b border-[#e5e7eb] cursor-pointer transition-colors hover:bg-[#eceae7]/60 ${expandedHist===row.key?"bg-[#eceae7]/60":""}`}>
+                    <td className="p-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[#cc679c] font-bold">{row.label}</span>
+                        {row.isCurrent && (
+                          <span className="text-[10px] font-black bg-[#cc679c] text-[#eceae7] px-1.5 py-0.5 rounded uppercase tracking-wide">actual</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 text-right text-[#cc679c] font-black">${row.ingresos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                    <td className="p-4 text-right text-green-700 font-bold">${row.efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                    <td className="p-4 text-right text-[#5db8d1] font-bold">${row.virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                    <td className="p-4 text-right text-[#cc679c]/70 font-bold">{row.cajas}</td>
+                    <td className="p-4 text-center text-[#cc679c]/50">
+                      {expandedHist===row.key ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+                    </td>
+                  </tr>
+                  {expandedHist===row.key && (
+                    <tr key={`${row.key}-detail`} className="bg-[#eceae7]/40">
+                      <td colSpan={6} className="px-6 py-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                          <div className="bg-[#f4f3f0] rounded-xl p-4 border border-[#e5e7eb]">
+                            <p className="text-[#cc679c]/60 text-xs font-bold uppercase mb-1">Total ingresos</p>
+                            <p className="text-[#cc679c] text-xl font-black">${row.ingresos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                          </div>
+                          <div className="bg-[#f4f3f0] rounded-xl p-4 border border-[#e5e7eb]">
+                            <p className="text-[#cc679c]/60 text-xs font-bold uppercase mb-1">Efectivo</p>
+                            <p className="text-green-700 text-xl font-black">${row.efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                            <p className="text-[#cc679c]/50 text-xs mt-1">{row.ingresos>0?((row.efectivo/row.ingresos)*100).toFixed(1):0}% del total</p>
+                          </div>
+                          <div className="bg-[#f4f3f0] rounded-xl p-4 border border-[#5db8d1]/20">
+                            <p className="text-[#cc679c]/60 text-xs font-bold uppercase mb-1">Virtual</p>
+                            <p className="text-[#5db8d1] text-xl font-black">${row.virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                            <p className="text-[#cc679c]/50 text-xs mt-1">{row.ingresos>0?((row.virtual/row.ingresos)*100).toFixed(1):0}% del total</p>
+                          </div>
+                          <div className="bg-[#f4f3f0] rounded-xl p-4 border border-[#e5e7eb]">
+                            <p className="text-[#cc679c]/60 text-xs font-bold uppercase mb-1">Cierres de caja</p>
+                            <p className="text-[#cc679c] text-xl font-black">{row.cajas}</p>
+                            <p className="text-[#cc679c]/50 text-xs mt-1">días trabajados</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              ))}
+              {(histTab==="mes" ? historicoPorMes : historicoPorSemana).length === 0 && (
+                <tr><td colSpan={6} className="p-8 text-center text-[#cc679c]/60 font-medium">No hay datos registrados aún.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
