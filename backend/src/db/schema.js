@@ -54,6 +54,8 @@ export const products = sqliteTable("products", {
   priceGroupId: integer("price_group_id").references(() => priceGroups.id, { onDelete: "set null" }),
   cost: real("cost").notNull().default(0),
   price: real("price").notNull(),
+  unitsPerPack: integer("units_per_pack").notNull().default(1),
+  packPrice: real("pack_price"),
   useSuggestedPrice: integer("use_suggested_price", { mode: "boolean" }).notNull().default(false),
   suggestedPricePercent: real("suggested_price_percent"),
   stock: integer("stock").notNull().default(0),
@@ -124,6 +126,8 @@ export const transactionItems = sqliteTable("transaction_items", {
   price: real("price").notNull(),
   quantity: integer("quantity").notNull(),
   total: real("total").notNull(),
+  saleMode: text("sale_mode", { enum: ["unidad", "paquete"] }).notNull().default("unidad"),
+  packSize: integer("pack_size").notNull().default(1),
 });
 
 // ─── Gastos fijos ─────────────────────────────────────────────────────────────

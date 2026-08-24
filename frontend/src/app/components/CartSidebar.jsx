@@ -1,4 +1,5 @@
 import { Plus, Minus, Trash2, CreditCard, X } from "lucide-react";
+import { maxQuantityForLine, saleLabel } from "../../utils/pack.js";
 
 export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout, isMobileOpen, onMobileClose }) {
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -12,21 +13,24 @@ export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout,
           <p className="text-sm mt-2">Agrega productos para comenzar</p>
         </div>
       ) : (
-        items.map((item) => (
-          <div key={item.id} className="bg-[#eceae7] rounded-lg p-4 shadow-sm border border-[#f4f3f0]">
+        items.map((item) => {
+          const maxQty = maxQuantityForLine(items, item);
+          return (
+          <div key={item.lineId} className="bg-[#eceae7] rounded-lg p-4 shadow-sm border border-[#f4f3f0]">
             <div className="flex items-start justify-between mb-3">
               <div className="flex-1 mr-2">
                 <h4 className="text-[#5db8d1] font-bold text-sm leading-snug">{item.name}</h4>
+                <p className="text-[#cc679c]/70 mt-0.5 text-xs font-bold">{saleLabel(item)}</p>
                 <p className="text-[#cc679c]/80 mt-1 text-sm font-medium">${Number(item.price).toFixed(2)}</p>
               </div>
-              <button onClick={() => onRemoveItem(item.id)} className="text-[#cc679c]/50 hover:text-[#cc679c] transition-colors shrink-0">
+              <button onClick={() => onRemoveItem(item.lineId)} className="text-[#cc679c]/50 hover:text-[#cc679c] transition-colors shrink-0">
                 <Trash2 size={18} />
               </button>
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 bg-[#f4f3f0] rounded-lg p-1">
                 <button
-                  onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                  onClick={() => onUpdateQuantity(item.lineId, item.quantity - 1)}
                   disabled={item.quantity <= 1}
                   className="w-8 h-8 flex items-center justify-center text-[#cc679c] hover:bg-[#e5e7eb] disabled:opacity-40 disabled:cursor-not-allowed rounded transition-colors"
                 >
@@ -34,8 +38,8 @@ export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout,
                 </button>
                 <span className="text-[#cc679c] font-bold w-7 text-center text-sm">{item.quantity}</span>
                 <button
-                  onClick={() => onUpdateQuantity(item.id, item.quantity + 1)}
-                  disabled={item.stock != null && item.quantity >= item.stock}
+                  onClick={() => onUpdateQuantity(item.lineId, item.quantity + 1)}
+                  disabled={item.quantity >= maxQty}
                   className="w-8 h-8 flex items-center justify-center text-[#cc679c] hover:bg-[#e5e7eb] disabled:opacity-40 disabled:cursor-not-allowed rounded transition-colors"
                 >
                   <Plus size={16} />
@@ -44,12 +48,13 @@ export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout,
               <div className="text-right">
                 <span className="text-[#cc679c] font-black block text-sm">${(item.price * item.quantity).toFixed(2)}</span>
                 {item.stock != null && item.stock <= 5 && (
-                  <span className="text-[#e3ac4d] font-bold text-xs">Stock: {item.stock}</span>
+                  <span className="text-[#e3ac4d] font-bold text-xs">Stock: {item.stock} u.</span>
                 )}
               </div>
             </div>
           </div>
-        ))
+          );
+        })
       )}
     </div>
   );

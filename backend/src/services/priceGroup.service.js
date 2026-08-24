@@ -82,6 +82,9 @@ export const PriceGroupService = {
 
     for (const product of products) {
       const patch = { price: roundMoney(product.price * factor) };
+      if (product.packPrice != null) {
+        patch.packPrice = roundMoney(product.packPrice * factor);
+      }
       if (updateCost) patch.cost = roundMoney((product.cost || 0) * factor);
       await ProductModel.update(product.id, patch);
     }

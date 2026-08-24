@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Eye, EyeOff, Bookmark, Layers, Percent } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
@@ -147,7 +147,7 @@ function PriceGroupPanel({ title, hint, type, icon: Icon, groups, onReload }) {
             <div className="p-6 border-b border-[#f4f3f0]">
               <h2 className="text-[#5db8d1] font-bold text-2xl">Aumento · {increaseModal.name}</h2>
               <p className="text-[#cc679c]/70 font-medium text-sm mt-2">
-                Se multiplica el precio de venta de los <span className="font-bold">{increaseModal.productCount} productos</span> de esta {noun}. Cada aviso de aumento se aplica sobre el precio actual.
+                Se multiplica el precio de venta (unidad y paquete) de los <span className="font-bold">{increaseModal.productCount} productos</span> de esta {noun}. Cada aviso de aumento se aplica sobre el precio actual.
               </p>
             </div>
             <div className="p-6 space-y-4">

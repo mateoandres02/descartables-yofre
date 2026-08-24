@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Search, Lock, Wallet, ShoppingCart, Unlock, X, ScanBarcode } from "lucide-react";
 import { ProductCard } from "./ProductCard.jsx";
 import { CartSidebar } from "./CartSidebar.jsx";
@@ -8,6 +8,7 @@ import { Loader } from "./Loader.jsx";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner.js";
+import { hasPackSale, lineIdFor, packSizeOf, unitsInCartForProduct } from "../../utils/pack.js";
 
 export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaja, role }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -23,6 +24,12 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [openingAmount, setOpeningAmount] = useState("");
   const [openingCaja, setOpeningCaja] = useState(false);
+  const cartRef = useRef(cartItems);
+  cartRef.current = cartItems;
+
+  const fetchProducts = useCallback(() => {
+    return api.get("/products").then((pRes) => setProducts(pRes.data)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -49,19 +56,46 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     return matchesSearch && matchesCategory && product.isAvailable;
   });
 
-  const handleAddToCart = (product) => {
-    const existing = cartItems.find((item) => item.id === product.id);
-    const currentQty = existing ? existing.quantity : 0;
-    if (currentQty >= product.stock) {
-      toast.error("Sin stock suficiente", { description: `Solo hay ${product.stock} unidad${product.stock === 1 ? "" : "es"} de ${product.name}` });
+  const handleAddToCart = (product, saleMode = "unidad") => {
+    const canPack = hasPackSale(product);
+    const mode = saleMode === "paquete" && canPack ? "paquete" : "unidad";
+    const packSize = packSizeOf(product);
+    const unitsEach = mode === "paquete" ? packSize : 1;
+    const lineId = lineIdFor(product.id, mode);
+    const price = mode === "paquete" ? Number(product.packPrice) : Number(product.price);
+    const prev = cartRef.current;
+    const remaining = Number(product.stock) - unitsInCartForProduct(prev, product.id);
+
+    if (remaining < unitsEach) {
+      toast.error("Sin stock suficiente", {
+        description: remaining < packSize && mode === "paquete"
+          ? `Quedan ${Math.max(0, remaining)} u. de ${product.name}; un paquete son ${packSize} u.`
+          : `Solo hay ${product.stock} unidad${product.stock === 1 ? "" : "es"} de ${product.name}`,
+      });
       return;
     }
-    if (existing) {
-      setCartItems((prev) => prev.map((item) => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item));
-    } else {
-      setCartItems((prev) => [...prev, { id: product.id, name: product.name, price: product.price, stock: product.stock, quantity: 1 }]);
-    }
-    toast.success(`${product.name} agregado al carrito`);
+
+    const existing = prev.find((item) => item.lineId === lineId);
+    const next = existing
+      ? prev.map((item) => item.lineId === lineId
+        ? { ...item, quantity: item.quantity + 1, stock: product.stock }
+        : item)
+      : [...prev, {
+        lineId,
+        id: product.id,
+        productId: product.id,
+        name: product.name,
+        saleMode: mode,
+        price,
+        unitsPerPack: packSize,
+        stock: product.stock,
+        quantity: 1,
+      }];
+    cartRef.current = next;
+    setCartItems(next);
+    toast.success(mode === "paquete"
+      ? `${product.name} (paquete x${packSize}) agregado`
+      : `${product.name} agregado al carrito`);
   };
 
   const handleBarcodeScan = useCallback((code) => {
@@ -72,8 +106,8 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
       toast.error("Producto no encontrado", { description: `No hay producto con código ${code}` });
       return;
     }
-    handleAddToCart(product);
-  }, [products, cartItems]);
+    handleAddToCart(product, "unidad");
+  }, [products]);
 
   useBarcodeScanner({
     onScan: handleBarcodeScan,
@@ -90,23 +124,26 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     );
     if (product) {
       e.preventDefault();
-      handleAddToCart(product);
+      handleAddToCart(product, "unidad");
       setSearchTerm("");
     }
   };
 
-  const handleUpdateQuantity = (id, quantity) => {
-    if (quantity <= 0) { handleRemoveItem(id); return; }
-    const item = cartItems.find((i) => i.id === id);
-    if (item && quantity > item.stock) {
+  const handleUpdateQuantity = (lineId, quantity) => {
+    if (quantity <= 0) { handleRemoveItem(lineId); return; }
+    const item = cartItems.find((i) => i.lineId === lineId);
+    if (!item) return;
+    const others = unitsInCartForProduct(cartItems, item.productId ?? item.id, lineId);
+    const unitsEach = item.saleMode === "paquete" ? packSizeOf(item) : 1;
+    if (others + quantity * unitsEach > item.stock) {
       toast.error("Sin stock suficiente", { description: `Solo hay ${item.stock} unidad${item.stock === 1 ? "" : "es"} de ${item.name}` });
       return;
     }
-    setCartItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity } : i));
+    setCartItems((prev) => prev.map((i) => i.lineId === lineId ? { ...i, quantity } : i));
   };
 
-  const handleRemoveItem = (id) => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id));
+  const handleRemoveItem = (lineId) => {
+    setCartItems((prev) => prev.filter((item) => item.lineId !== lineId));
     toast.info("Producto eliminado del carrito");
   };
 
@@ -121,11 +158,13 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
         surchargePercent: p.surchargePercent,
       })),
       items: cartItems.map((item) => ({
-        productId: item.id,
+        productId: item.productId ?? item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
         total: item.price * item.quantity,
+        saleMode: item.saleMode || "unidad",
+        unitsPerPack: item.unitsPerPack || 1,
       })),
     };
 
@@ -134,6 +173,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
       toast.success("Venta procesada exitosamente", { description: `Total cobrado: $${finalTotal.toFixed(2)}` });
       setCartItems([]);
       setShowPaymentModal(false);
+      fetchProducts();
     } catch (err) {
       toast.error("No se pudo registrar la venta", { description: err.response?.data?.message || err.message });
       throw err;

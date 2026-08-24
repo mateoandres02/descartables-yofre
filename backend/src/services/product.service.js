@@ -20,6 +20,25 @@ async function assertUniqueCodbarra(codbarra, excludeId = null) {
   }
 }
 
+function normalizePackFields({ unitsPerPack, packPrice }) {
+  let size = parseInt(unitsPerPack, 10);
+  if (!Number.isFinite(size) || size < 1) size = 1;
+
+  if (size === 1) {
+    return { unitsPerPack: 1, packPrice: null };
+  }
+
+  const parsedPrice = packPrice === null || packPrice === undefined || packPrice === ""
+    ? null
+    : Number(packPrice);
+
+  if (parsedPrice == null || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+    throw { status: 400, message: "Si el producto se vende por paquete, indicá cuántas unidades trae y el precio del paquete." };
+  }
+
+  return { unitsPerPack: size, packPrice: parsedPrice };
+}
+
 export const ProductService = {
   async getAll() {
     return ProductModel.findAll();
@@ -34,7 +53,7 @@ export const ProductService = {
     return product;
   },
 
-  async create({ name, codbarra, categoryId, priceGroupId, cost, price, stock, minStock, icon, isAvailable }) {
+  async create({ name, codbarra, categoryId, priceGroupId, cost, price, stock, minStock, icon, isAvailable, unitsPerPack, packPrice }) {
     if (!name || price === undefined) {
       throw { status: 400, message: "Nombre y precio son requeridos." };
     }
@@ -44,6 +63,7 @@ export const ProductService = {
 
     const normalizedCodbarra = normalizeCodbarra(codbarra);
     await assertUniqueCodbarra(normalizedCodbarra);
+    const pack = normalizePackFields({ unitsPerPack, packPrice });
 
     const [created] = await ProductModel.create({
       name,
@@ -56,6 +76,8 @@ export const ProductService = {
       minStock: minStock ?? 5,
       icon: icon || "Package",
       isAvailable: isAvailable !== false,
+      unitsPerPack: pack.unitsPerPack,
+      packPrice: pack.packPrice,
     });
     return created;
   },
@@ -78,6 +100,15 @@ export const ProductService = {
 
     if ("priceGroupId" in updates) {
       updates.priceGroupId = updates.priceGroupId || null;
+    }
+
+    if ("unitsPerPack" in updates || "packPrice" in updates) {
+      const pack = normalizePackFields({
+        unitsPerPack: "unitsPerPack" in updates ? updates.unitsPerPack : product.unitsPerPack,
+        packPrice: "packPrice" in updates ? updates.packPrice : product.packPrice,
+      });
+      updates.unitsPerPack = pack.unitsPerPack;
+      updates.packPrice = pack.packPrice;
     }
 
     const [updated] = await ProductModel.update(id, updates);

@@ -3,6 +3,7 @@ import { TrendingUp, Activity, Clock, Lock, Unlock, Receipt, Package, Wallet, Bo
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
+import { formatStock } from "../../utils/pack.js";
 
 export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }) {
   const [showOpenModal, setShowOpenModal] = useState(false);
@@ -288,7 +289,7 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
               <button onClick={() => { setShowWithdrawModal(false); setSearchWithdraw(""); setWithdrawQty(""); }} className="text-[#cc679c]/60 hover:text-[#cc679c] transition-colors"><X size={24} /></button>
             </div>
             <form onSubmit={handleWithdraw} className="p-6 space-y-4">
-              <p className="text-[#cc679c]/80 font-medium text-sm mb-4">Seleccioná el producto y la cantidad a retirar para uso del local. Se descontará del stock y quedará registrado en el historial.</p>
+              <p className="text-[#cc679c]/80 font-medium text-sm mb-4">Seleccioná el producto y la cantidad a retirar para uso del local. Se descuenta en unidades del stock y queda registrado en el historial.</p>
               <div>
                 <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Producto</label>
                 <input
@@ -307,13 +308,13 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
                   <option value="">Seleccione un producto...</option>
                   {products.filter(p => (p.name || "").toLowerCase().includes(searchWithdraw.toLowerCase()) && Number(p.stock) > 0).map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} (Stock: {p.stock})
+                      {p.name} (Stock: {formatStock(p.stock, p.unitsPerPack)})
                     </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Cantidad a retirar</label>
+                <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Cantidad a retirar (unidades)</label>
                 <input
                   type="number"
                   min="1"

@@ -13,6 +13,8 @@ const SELECT_FIELDS = {
   priceGroupType: priceGroups.type,
   cost: products.cost,
   price: products.price,
+  unitsPerPack: products.unitsPerPack,
+  packPrice: products.packPrice,
   stock: products.stock,
   minStock: products.minStock,
   icon: products.icon,

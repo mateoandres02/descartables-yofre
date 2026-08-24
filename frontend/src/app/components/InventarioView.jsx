@@ -4,6 +4,7 @@ import { Loader } from "./Loader.jsx";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner.js";
+import { formatStock, hasPackSale } from "../../utils/pack.js";
 
 const ICON_OPTIONS = [
   { key: "BookOpen",  Icon: BookOpen,  label: "Libro"          },
@@ -13,7 +14,7 @@ const ICON_OPTIONS = [
   { key: "Package", Icon: Package, label: "Genérico"       },
 ];
 
-const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package" };
+const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package", unitsPerPack: "", packPrice: "" };
 
 function toModalItem(product) {
   return {
@@ -25,6 +26,8 @@ function toModalItem(product) {
     minStock: String(product.minStock),
     icon: product.icon || "Package",
     priceGroupId: product.priceGroupId ?? null,
+    unitsPerPack: Number(product.unitsPerPack) > 1 ? String(product.unitsPerPack) : "",
+    packPrice: product.packPrice != null && product.packPrice !== "" ? String(product.packPrice) : "",
   };
 }
 
@@ -170,6 +173,10 @@ export function InventarioView() {
         stock: parseInt(productModal.item.stock, 10) || 0,
         minStock: parseInt(productModal.item.minStock, 10) || 0,
         priceGroupId: productModal.item.priceGroupId || null,
+        unitsPerPack: parseInt(productModal.item.unitsPerPack, 10) || 1,
+        packPrice: productModal.item.packPrice === "" || productModal.item.packPrice == null
+          ? null
+          : parseFloat(productModal.item.packPrice),
       };
 
       const originalProduct = inventory.find(p => p.id === productModal.item.id);
@@ -349,7 +356,7 @@ export function InventarioView() {
 
       <div className="bg-[#f4f3f0] rounded-xl overflow-hidden border border-[#e5e7eb] shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1080px]">
+          <table className="w-full min-w-[1180px]">
             <thead>
               <tr className="border-b border-[#e5e7eb]">
                 <th className="p-4 w-10">
@@ -410,9 +417,14 @@ export function InventarioView() {
                       <span className="text-[#cc679c]/80 font-medium">${Number(product.cost || 0).toFixed(2)}</span>
                     </td>
                     <td className="p-4 whitespace-nowrap">
-                      <span className="text-[#cc679c] font-black">${Number(product.price).toFixed(2)}</span>
+                      <span className="text-[#cc679c] font-black block">${Number(product.price).toFixed(2)}</span>
+                      {hasPackSale(product) && (
+                        <span className="text-[#cc679c]/60 font-medium text-xs">paq. x{product.unitsPerPack} ${Number(product.packPrice).toFixed(2)}</span>
+                      )}
                     </td>
-                    <td className="p-4 whitespace-nowrap"><span className="text-[#cc679c] font-bold">{product.stock} u.</span></td>
+                    <td className="p-4 whitespace-nowrap">
+                      <span className="text-[#cc679c] font-bold">{formatStock(product.stock, product.unitsPerPack)}</span>
+                    </td>
                     <td className="p-4 whitespace-nowrap"><span className="text-[#cc679c]/80 font-medium">{product.minStock} u.</span></td>
                     <td className="p-3">
                       <span
@@ -550,7 +562,7 @@ export function InventarioView() {
                   />
                 </div>
                 <div>
-                  <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Precio ($)</label>
+                  <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Precio unidad ($)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -566,8 +578,51 @@ export function InventarioView() {
                   />
                 </div>
               </div>
+              <div className="rounded-xl border border-[#e5e7eb] bg-white/60 p-4 space-y-4">
+                <div>
+                  <p className="text-[#cc679c] font-bold text-sm">Venta por paquete</p>
+                  <p className="text-[#cc679c]/60 font-medium text-xs mt-1">
+                    El stock siempre se cuenta en unidades. Si vendés cajas de 100, poné 100 acá y el precio de esa caja (mayorista). Dejá vacío si solo se vende suelto.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Unidades por paquete</label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="off"
+                      value={productModal.item.unitsPerPack ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
+                        setProductModal((prev) => ({ ...prev, item: { ...prev.item, unitsPerPack: val } }));
+                      }}
+                      onFocus={(e) => e.target.select()}
+                      placeholder="1"
+                      className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Precio paquete ($)</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      autoComplete="off"
+                      value={productModal.item.packPrice ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
+                        setProductModal((prev) => ({ ...prev, item: { ...prev.item, packPrice: val } }));
+                      }}
+                      onFocus={(e) => e.target.select()}
+                      placeholder="0"
+                      disabled={!(parseInt(productModal.item.unitsPerPack, 10) > 1)}
+                      className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm transition-all disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4">
-              {[{ label: "Stock Actual", field: "stock" }, { label: "Stock Mínimo", field: "minStock" }].map(({ label, field }) => (
+              {[{ label: "Stock actual (unidades)", field: "stock" }, { label: "Stock mínimo (unidades)", field: "minStock" }].map(({ label, field }) => (
                 <div key={field}>
                   <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">{label}</label>
                   <input
@@ -585,6 +640,11 @@ export function InventarioView() {
                 </div>
               ))}
               </div>
+              {parseInt(productModal.item.unitsPerPack, 10) > 1 && (
+                <p className="text-[#cc679c]/60 font-medium text-xs -mt-2">
+                  Con este stock: {formatStock(productModal.item.stock, productModal.item.unitsPerPack)}
+                </p>
+              )}
             </div>
             <div className="p-6 border-t border-[#f4f3f0] flex gap-4 shrink-0">
               <button onClick={() => setProductModal({ isOpen: false, item: null, isNew: false })} className="flex-1 bg-[#f4f3f0] hover:bg-[#e5e7eb] text-[#cc679c] font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
