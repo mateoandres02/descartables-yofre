@@ -4,6 +4,7 @@ import {
   real,
   sqliteTable,
   text,
+  uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
 // ─── Usuarios ────────────────────────────────────────────────────────────────
@@ -32,6 +33,17 @@ export const paymentMethods = sqliteTable("payment_methods", {
   surcharge: real("surcharge").notNull().default(0), // porcentaje, ej: 10.5
 });
 
+// ─── Marcas y colecciones (aumentos de precio) ───────────────────────────────
+
+export const priceGroups = sqliteTable("price_groups", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  type: text("type", { enum: ["marca", "coleccion"] }).notNull(),
+  lastIncreasePercent: real("last_increase_percent").notNull().default(0),
+}, (table) => [
+  uniqueIndex("price_groups_name_type_unique").on(table.name, table.type),
+]);
+
 // ─── Productos ───────────────────────────────────────────────────────────────
 
 export const products = sqliteTable("products", {
@@ -39,6 +51,7 @@ export const products = sqliteTable("products", {
   name: text("name").notNull(),
   codbarra: text("cod_barra").unique(),
   categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
+  priceGroupId: integer("price_group_id").references(() => priceGroups.id, { onDelete: "set null" }),
   cost: real("cost").notNull().default(0),
   price: real("price").notNull(),
   useSuggestedPrice: integer("use_suggested_price", { mode: "boolean" }).notNull().default(false),

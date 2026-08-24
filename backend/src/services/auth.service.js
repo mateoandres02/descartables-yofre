@@ -13,10 +13,10 @@ const SESSION_DURATION = "1d";
 export const AuthService = {
   async login(email, password) {
     if (!email || !password) {
-      throw { status: 400, message: "Email y contraseña son requeridos." };
+      throw { status: 400, message: "Usuario y contraseña son requeridos." };
     }
 
-    const user = await UserModel.findByEmail(email);
+    const user = await UserModel.findByLogin(email);
     if (!user) {
       throw { status: 401, message: "Credenciales inválidas." };
     }

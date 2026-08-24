@@ -45,4 +45,12 @@ export const ProductController = {
       res.status(err.status || 500).json({ message: err.message || "Error interno." });
     }
   },
+
+  async bulkAssign(req, res) {
+    try {
+      res.json(await ProductService.bulkAssign(req.body));
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+    }
+  },
 };

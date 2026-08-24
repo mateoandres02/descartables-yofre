@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Search, Plus, Edit2, Trash2, AlertTriangle, X, Package, BookOpen, Notebook, PenSquare, BookCopy, ScanBarcode, Eye, EyeOff, ChevronDown, TrendingUp } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, AlertTriangle, X, Package, BookOpen, Notebook, PenSquare, BookCopy, ScanBarcode } from "lucide-react";
 import { Loader } from "./Loader.jsx";
 import { toast } from "sonner";
 import api from "../../services/api.js";
@@ -13,7 +13,7 @@ const ICON_OPTIONS = [
   { key: "Package", Icon: Package, label: "Genérico"       },
 ];
 
-const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, stock: "", minStock: "", icon: "Package", suggestedPricePercent: null };
+const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package" };
 
 function toModalItem(product) {
   return {
@@ -24,7 +24,7 @@ function toModalItem(product) {
     stock: String(product.stock),
     minStock: String(product.minStock),
     icon: product.icon || "Package",
-    suggestedPricePercent: product.suggestedPricePercent ?? null,
+    priceGroupId: product.priceGroupId ?? null,
   };
 }
 
@@ -36,43 +36,32 @@ export function InventarioView() {
   const [productModal, setProductModal] = useState({ isOpen: false, item: null, isNew: false });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, product: null });
   const [deleting, setDeleting] = useState(false);
-  const [showCosto, setShowCosto] = useState(false);
-  const [showPrecio, setShowPrecio] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [suggestedPercents, setSuggestedPercents] = useState([]);
-  const [priceAccordionOpen, setPriceAccordionOpen] = useState(false);
   const [showAllLowStock, setShowAllLowStock] = useState(false);
-  const [showModalAmounts, setShowModalAmounts] = useState(false);
+  const [brands, setBrands] = useState([]);
+  const [collections, setCollections] = useState([]);
+  const [groupFilter, setGroupFilter] = useState("todos");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [assignModal, setAssignModal] = useState(null);
 
   async function fetchData() {
     try {
-      const [pRes, cRes, sRes] = await Promise.all([
+      const [pRes, cRes, bRes, colRes] = await Promise.all([
         api.get("/products"),
         api.get("/categories"),
-        api.get("/settings/suggested-prices").catch(() => ({ data: { percents: [] } })),
+        api.get("/price-groups", { params: { type: "marca" } }),
+        api.get("/price-groups", { params: { type: "coleccion" } }),
       ]);
       setInventory(pRes.data);
       setCategories(cRes.data);
-      setSuggestedPercents(sRes.data.percents ?? []);
+      setBrands(bRes.data);
+      setCollections(colRes.data);
     } catch { toast.error("Error al cargar datos"); }
     finally { setLoading(false); }
   }
 
   useEffect(() => { fetchData(); }, []);
-
-  // Recalcula el precio sugerido cada vez que cambia el porcentaje o el costo
-  useEffect(() => {
-    if (!productModal.isOpen || !productModal.item) return;
-    const pct = productModal.item.suggestedPricePercent;
-    if (pct == null) return;
-    const cost = parseFloat(productModal.item.cost);
-    if (!isFinite(cost) || cost <= 0) return;
-    const suggestedPrice = String(Math.ceil((cost * (1 + pct / 100)) / 5) * 5);
-    if (productModal.item.price === suggestedPrice) return;
-    setProductModal((prev) => ({ ...prev, item: { ...prev.item, price: suggestedPrice } }));
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productModal.item?.suggestedPricePercent, productModal.item?.cost]);
 
   const filteredInventory = inventory
     .filter((p) => {
@@ -80,16 +69,21 @@ export function InventarioView() {
       const matchesSearch =
         (p.name || "").toLowerCase().includes(term) ||
         (p.category || "").toLowerCase().includes(term) ||
-        (p.codbarra && String(p.codbarra).includes(searchTerm.trim()));
+        (p.codbarra && String(p.codbarra).includes(searchTerm.trim())) ||
+        (p.priceGroupName || "").toLowerCase().includes(term);
       const matchesCategory = selectedCategory === "Todos" || p.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      const matchesGroup =
+        groupFilter === "todos" ||
+        (groupFilter === "sin-grupo" && !p.priceGroupId) ||
+        (groupFilter === "marcas" && p.priceGroupType === "marca") ||
+        (groupFilter === "colecciones" && p.priceGroupType === "coleccion") ||
+        String(p.priceGroupId) === String(groupFilter);
+      return matchesSearch && matchesCategory && matchesGroup;
     })
     .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" }));
   const lowStockItems = inventory.filter((p) => p.stock <= p.minStock);
 
   const handleAddProduct = () => {
-    setPriceAccordionOpen(false);
-    setShowModalAmounts(false);
     setProductModal({
       isOpen: true,
       item: { ...EMPTY_PRODUCT, categoryId: categories[0]?.id ?? null },
@@ -108,8 +102,6 @@ export function InventarioView() {
   }, [categories]);
 
   const openEditProduct = useCallback((product) => {
-    setPriceAccordionOpen(false);
-    setShowModalAmounts(false);
     setProductModal({ isOpen: true, item: toModalItem(product), isNew: false });
     setSearchTerm("");
     toast.success(`Producto encontrado: ${product.name}`);
@@ -177,7 +169,7 @@ export function InventarioView() {
         cost: parseFloat(productModal.item.cost) || 0,
         stock: parseInt(productModal.item.stock, 10) || 0,
         minStock: parseInt(productModal.item.minStock, 10) || 0,
-        suggestedPricePercent: productModal.item.suggestedPricePercent ?? null,
+        priceGroupId: productModal.item.priceGroupId || null,
       };
 
       const originalProduct = inventory.find(p => p.id === productModal.item.id);
@@ -208,6 +200,44 @@ export function InventarioView() {
       setSubmitting(false);
     }
   };
+
+  const toggleSelected = (id) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const allVisibleSelected = filteredInventory.length > 0 && filteredInventory.every((p) => selectedIds.includes(p.id));
+
+  const toggleSelectAllVisible = () => {
+    if (allVisibleSelected) {
+      const visible = new Set(filteredInventory.map((p) => p.id));
+      setSelectedIds((prev) => prev.filter((id) => !visible.has(id)));
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...filteredInventory.map((p) => p.id)])]);
+    }
+  };
+
+  const handleBulkAssign = async (priceGroupId) => {
+    if (selectedIds.length === 0) return;
+    setSubmitting(true);
+    try {
+      await api.post("/products/bulk-assign", { productIds: selectedIds, priceGroupId });
+      toast.success(priceGroupId ? `Asignados ${selectedIds.length} productos` : "Grupo quitado");
+      setSelectedIds([]);
+      setAssignModal(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error al asignar");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const selectedBrandId = brands.some((b) => b.id === Number(productModal.item?.priceGroupId))
+    ? Number(productModal.item.priceGroupId)
+    : "";
+  const selectedCollectionId = collections.some((c) => c.id === Number(productModal.item?.priceGroupId))
+    ? Number(productModal.item.priceGroupId)
+    : "";
 
   const categoryNames = categories.map((c) => c.name);
   const allCategories = categoryNames.length > 0 ? categoryNames : ["Libros", "Cuadernos", "Útiles"];
@@ -266,7 +296,7 @@ export function InventarioView() {
         </button>
       </div>
 
-      <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-0 md:flex-wrap mb-6 scrollbar-hide">
+      <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-0 md:flex-wrap mb-3 scrollbar-hide">
         {["Todos", ...allCategories].map((cat) => (
           <button
             key={cat}
@@ -282,34 +312,59 @@ export function InventarioView() {
         ))}
       </div>
 
+      <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 md:flex-wrap mb-6 scrollbar-hide">
+        {[
+          { id: "todos", label: "Todos los grupos" },
+          { id: "sin-grupo", label: "Sin marca/colección" },
+          { id: "marcas", label: "Solo marcas" },
+          { id: "colecciones", label: "Solo colecciones" },
+          ...brands.map((b) => ({ id: String(b.id), label: b.name })),
+          ...collections.map((c) => ({ id: String(c.id), label: c.name })),
+        ].map((opt) => (
+          <button
+            key={opt.id}
+            onClick={() => setGroupFilter(opt.id)}
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap shrink-0 ${
+              groupFilter === opt.id
+                ? "bg-[#5db8d1] text-white font-bold"
+                : "bg-[#f4f3f0] text-[#cc679c]/80 font-medium hover:bg-[#e5e7eb]"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {selectedIds.length > 0 && (
+        <div className="mb-4 bg-[#cc679c] text-[#eceae7] rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 shadow-md">
+          <span className="font-bold text-sm flex-1">{selectedIds.length} productos seleccionados</span>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => setAssignModal("marca")} className="bg-white/15 hover:bg-white/25 font-bold text-xs px-3 py-2 rounded-lg">Asignar marca</button>
+            <button onClick={() => setAssignModal("coleccion")} className="bg-white/15 hover:bg-white/25 font-bold text-xs px-3 py-2 rounded-lg">Asignar colección</button>
+            <button onClick={() => handleBulkAssign(null)} className="bg-white/15 hover:bg-white/25 font-bold text-xs px-3 py-2 rounded-lg">Quitar grupo</button>
+            <button onClick={() => setSelectedIds([])} className="bg-white/15 hover:bg-white/25 font-bold text-xs px-3 py-2 rounded-lg">Cancelar</button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-[#f4f3f0] rounded-xl overflow-hidden border border-[#e5e7eb] shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1150px]">
+          <table className="w-full min-w-[1080px]">
             <thead>
               <tr className="border-b border-[#e5e7eb]">
+                <th className="p-4 w-10">
+                  <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAllVisible} className="accent-[#cc679c] w-4 h-4" />
+                </th>
                 <th className="text-left text-[#cc679c]/80 font-bold p-4">Producto</th>
-                <th className="text-left text-[#cc679c]/80 font-bold p-4">Cód. Barras</th>
+                <th className="text-center text-[#cc679c]/80 font-bold p-4 whitespace-nowrap">Acciones</th>
+                <th className="text-left text-[#cc679c]/80 font-bold p-4 whitespace-nowrap">Cód. Barras</th>
                 <th className="text-left text-[#cc679c]/80 font-bold p-4">Categoría</th>
-                <th className="text-left text-[#cc679c]/80 font-bold p-4">
-                  <div className="flex items-center gap-2">
-                    Costo
-                    <button onClick={() => setShowCosto((v) => !v)} title={showCosto ? "Ocultar costo" : "Mostrar costo"} className="text-[#cc679c]/40 hover:text-[#cc679c] transition-colors">
-                      {showCosto ? <Eye size={15} /> : <EyeOff size={15} />}
-                    </button>
-                  </div>
-                </th>
-                <th className="text-left text-[#cc679c]/80 font-bold p-4">
-                  <div className="flex items-center gap-2">
-                    Precio
-                    <button onClick={() => setShowPrecio((v) => !v)} title={showPrecio ? "Ocultar precio" : "Mostrar precio"} className="text-[#cc679c]/40 hover:text-[#cc679c] transition-colors">
-                      {showPrecio ? <Eye size={15} /> : <EyeOff size={15} />}
-                    </button>
-                  </div>
-                </th>
+                <th className="text-left text-[#cc679c]/80 font-bold p-4 whitespace-nowrap">Marca / Colección</th>
+                <th className="text-left text-[#cc679c]/80 font-bold p-4">Costo</th>
+                <th className="text-left text-[#cc679c]/80 font-bold p-4">Precio</th>
                 <th className="text-left text-[#cc679c]/80 font-bold p-4">Stock</th>
-                <th className="text-left text-[#cc679c]/80 font-bold p-4">Min. Stock</th>
+                <th className="text-left text-[#cc679c]/80 font-bold p-4 whitespace-nowrap">Min. Stock</th>
                 <th className="text-left text-[#cc679c]/80 font-bold p-4">Estado</th>
-                <th className="text-center text-[#cc679c]/80 font-bold p-4">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -318,32 +373,12 @@ export function InventarioView() {
                 const lowStock = !noStock && product.stock <= product.minStock;
                 return (
                   <tr key={product.id} className="border-b border-[#e5e7eb] hover:bg-[#eceae7]/50 transition-colors">
-                    <td className="p-4"><span className="text-[#cc679c] font-bold">{product.name}</span></td>
                     <td className="p-4">
-                      <span className="text-[#cc679c]/80 font-medium font-mono text-sm">
-                        {product.codbarra || "—"}
-                      </span>
+                      <input type="checkbox" checked={selectedIds.includes(product.id)} onChange={() => toggleSelected(product.id)} className="accent-[#cc679c] w-4 h-4" />
                     </td>
-                    <td className="p-4"><span className="text-[#cc679c]/80 font-medium">{product.category}</span></td>
-                    <td className="p-4">
-                      {showCosto
-                        ? <span className="text-[#cc679c]/80 font-medium">${Number(product.cost || 0).toFixed(2)}</span>
-                        : <span className="text-[#cc679c]/30 font-black tracking-widest select-none">••••</span>}
-                    </td>
-                    <td className="p-4">
-                      {showPrecio
-                        ? <span className="text-[#cc679c] font-black">${Number(product.price).toFixed(2)}</span>
-                        : <span className="text-[#cc679c]/30 font-black tracking-widest select-none">••••</span>}
-                    </td>
-                    <td className="p-4"><span className="text-[#cc679c] font-bold">{product.stock} unidades</span></td>
-                    <td className="p-4"><span className="text-[#cc679c]/80 font-medium">{product.minStock} unid.</span></td>
-                    <td className="p-4">
-                      <span className={`px-3 py-1 rounded-full text-sm font-bold shadow-sm ${noStock ? "bg-red-500/15 text-red-600" : lowStock ? "bg-[#e3ac4d]/30 text-[#cc679c]" : "bg-green-500/10 text-green-700"}`}>
-                        {noStock ? "Sin stock" : lowStock ? "Stock Bajo" : "Stock OK"}
-                      </span>
-                    </td>
-                    <td className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-3">
+                    <td className="p-4 max-w-[220px]"><span className="text-[#cc679c] font-bold block truncate" title={product.name}>{product.name}</span></td>
+                    <td className="p-3 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-2">
                         <button
                           onClick={() => openEditProduct(product)}
                           className="text-[#5db8d1] hover:text-[#4a9bb8] transition-colors p-1"
@@ -359,6 +394,33 @@ export function InventarioView() {
                           <Trash2 size={18} />
                         </button>
                       </div>
+                    </td>
+                    <td className="p-4 whitespace-nowrap">
+                      <span className="text-[#cc679c]/80 font-medium font-mono text-sm">
+                        {product.codbarra || "—"}
+                      </span>
+                    </td>
+                    <td className="p-4 max-w-[140px]"><span className="text-[#cc679c]/80 font-medium block truncate">{product.category}</span></td>
+                    <td className="p-4 whitespace-nowrap">
+                      {product.priceGroupName
+                        ? <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${product.priceGroupType === "marca" ? "bg-[#cc679c]/15 text-[#cc679c]" : "bg-[#5db8d1]/15 text-[#5db8d1]"}`}>{product.priceGroupName}</span>
+                        : <span className="text-[#cc679c]/40 font-medium text-sm">Sin grupo</span>}
+                    </td>
+                    <td className="p-4 whitespace-nowrap">
+                      <span className="text-[#cc679c]/80 font-medium">${Number(product.cost || 0).toFixed(2)}</span>
+                    </td>
+                    <td className="p-4 whitespace-nowrap">
+                      <span className="text-[#cc679c] font-black">${Number(product.price).toFixed(2)}</span>
+                    </td>
+                    <td className="p-4 whitespace-nowrap"><span className="text-[#cc679c] font-bold">{product.stock} u.</span></td>
+                    <td className="p-4 whitespace-nowrap"><span className="text-[#cc679c]/80 font-medium">{product.minStock} u.</span></td>
+                    <td className="p-3">
+                      <span
+                        title={noStock ? "Sin stock" : lowStock ? "Stock bajo" : "Stock OK"}
+                        className={`inline-flex items-center justify-center whitespace-nowrap shrink-0 px-2 py-0.5 rounded-full text-[11px] font-bold leading-none ${noStock ? "bg-red-500/15 text-red-600" : lowStock ? "bg-[#e3ac4d]/30 text-[#cc679c]" : "bg-green-500/10 text-green-700"}`}
+                      >
+                        {noStock ? "Sin stock" : lowStock ? "Bajo" : "OK"}
+                      </span>
                     </td>
                   </tr>
                 );
@@ -439,187 +501,70 @@ export function InventarioView() {
                   {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Marca</label>
+                  <select
+                    value={selectedBrandId}
+                    onChange={(e) => setProductModal((prev) => ({
+                      ...prev,
+                      item: { ...prev.item, priceGroupId: e.target.value ? Number(e.target.value) : null },
+                    }))}
+                    className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm transition-all"
+                  >
+                    <option value="">Sin marca</option>
+                    {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Colección</label>
+                  <select
+                    value={selectedCollectionId}
+                    disabled={Boolean(selectedBrandId)}
+                    onChange={(e) => setProductModal((prev) => ({
+                      ...prev,
+                      item: { ...prev.item, priceGroupId: e.target.value ? Number(e.target.value) : null },
+                    }))}
+                    className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm transition-all disabled:opacity-50"
+                  >
+                    <option value="">{selectedBrandId ? "Usá marca o colección, no ambas" : "Sin colección"}</option>
+                    {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[#cc679c]/80 font-bold text-sm">Costo ($)</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowModalAmounts((v) => !v)}
-                      title={showModalAmounts ? "Ocultar montos" : "Mostrar montos"}
-                      className="text-[#cc679c]/40 hover:text-[#cc679c] transition-colors"
-                    >
-                      {showModalAmounts ? <Eye size={14} /> : <EyeOff size={14} />}
-                    </button>
-                  </div>
-                  {showModalAmounts ? (
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      value={productModal.item.cost}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
-                        setProductModal((prev) => ({ ...prev, item: { ...prev.item, cost: val } }));
-                      }}
-                      onFocus={(e) => e.target.select()}
-                      placeholder="0"
-                      className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm transition-all"
-                    />
-                  ) : (
-                    <div
-                      onClick={() => setShowModalAmounts(true)}
-                      className="w-full bg-white rounded-xl px-4 py-3 border border-[#f4f3f0] shadow-sm cursor-pointer flex items-center"
-                    >
-                      <span className="text-[#cc679c]/30 tracking-widest font-black select-none">
-                        {productModal.item.cost ? "••••" : ""}
-                      </span>
-                      {!productModal.item.cost && <span className="text-[#cc679c]/30 font-medium text-sm">0</span>}
-                    </div>
-                  )}
+                  <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Costo ($)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={productModal.item.cost}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
+                      setProductModal((prev) => ({ ...prev, item: { ...prev.item, cost: val } }));
+                    }}
+                    onFocus={(e) => e.target.select()}
+                    placeholder="0"
+                    className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm transition-all"
+                  />
                 </div>
                 <div>
                   <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Precio ($)</label>
-                  {showModalAmounts ? (
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      autoComplete="off"
-                      value={productModal.item.price}
-                      readOnly={productModal.item.suggestedPricePercent != null}
-                      onChange={(e) => {
-                        if (productModal.item.suggestedPricePercent != null) return;
-                        const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
-                        setProductModal((prev) => ({ ...prev, item: { ...prev.item, price: val } }));
-                      }}
-                      onFocus={(e) => e.target.select()}
-                      placeholder="0"
-                      className={`w-full font-bold rounded-xl px-4 py-3 border focus:ring-2 outline-none shadow-sm transition-all ${
-                        productModal.item.suggestedPricePercent != null
-                          ? "bg-[#cc679c]/5 text-[#cc679c] border-[#cc679c]/30 cursor-not-allowed"
-                          : "bg-white text-[#cc679c] border-[#f4f3f0] focus:border-[#cc679c] focus:ring-[#cc679c]/20"
-                      }`}
-                    />
-                  ) : (
-                    <div
-                      onClick={() => setShowModalAmounts(true)}
-                      className={`w-full rounded-xl px-4 py-3 border shadow-sm cursor-pointer flex items-center ${
-                        productModal.item.suggestedPricePercent != null
-                          ? "bg-[#cc679c]/5 border-[#cc679c]/30"
-                          : "bg-white border-[#f4f3f0]"
-                      }`}
-                    >
-                      <span className="text-[#cc679c]/30 tracking-widest font-black select-none">
-                        {productModal.item.price ? "••••" : ""}
-                      </span>
-                      {!productModal.item.price && <span className="text-[#cc679c]/30 font-medium text-sm">0</span>}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Precio sugerido: checkbox 80% fijo + acordeón para el resto */}
-              <div className="space-y-2">
-                {/* Checkbox fijo 80% */}
-                <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all select-none ${
-                  productModal.item.suggestedPricePercent === 80
-                    ? "bg-[#cc679c]/10 border-[#cc679c]/40"
-                    : "bg-[#eceae7] border-[#e5e7eb] hover:border-[#cc679c]/30"
-                }`}>
                   <input
-                    type="checkbox"
-                    checked={productModal.item.suggestedPricePercent === 80}
-                    onChange={() => {
-                      const isChecked = productModal.item.suggestedPricePercent === 80;
-                      setProductModal((prev) => ({
-                        ...prev,
-                        item: {
-                          ...prev.item,
-                          suggestedPricePercent: isChecked ? null : 80,
-                          ...(isChecked && { price: "" }),
-                        },
-                      }));
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={productModal.item.price}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
+                      setProductModal((prev) => ({ ...prev, item: { ...prev.item, price: val } }));
                     }}
-                    className="w-4 h-4 accent-[#cc679c] cursor-pointer"
+                    onFocus={(e) => e.target.select()}
+                    placeholder="0"
+                    className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm transition-all"
                   />
-                  <div className="flex items-center gap-2 flex-1">
-                    <TrendingUp size={15} className="text-[#e3ac4d]" />
-                    <span className="text-[#cc679c] font-bold text-sm">Precio sugerido 80%</span>
-                  </div>
-                  {productModal.item.suggestedPricePercent === 80 && (
-                    <span className="text-[#cc679c]/60 font-bold text-xs">aplicado</span>
-                  )}
-                </label>
-
-                {/* Acordeón para porcentajes adicionales (excluye 80%) */}
-                {suggestedPercents.filter((p) => p !== 80).length > 0 && (
-                  <div className="rounded-xl border border-[#e5e7eb] overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setPriceAccordionOpen((v) => !v)}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-[#eceae7] hover:bg-[#e5e3e0] transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <TrendingUp size={16} className="text-[#e3ac4d]" />
-                        <span className="text-[#cc679c] font-bold text-sm">
-                          {productModal.item.suggestedPricePercent != null && productModal.item.suggestedPricePercent !== 80
-                            ? `Precio sugerido: ${productModal.item.suggestedPricePercent}% aplicado`
-                            : "Otros porcentajes sugeridos"}
-                        </span>
-                      </div>
-                      <ChevronDown
-                        size={16}
-                        className={`text-[#cc679c]/60 transition-transform ${priceAccordionOpen ? "rotate-180" : ""}`}
-                      />
-                    </button>
-                    {priceAccordionOpen && (
-                      <div className="px-4 py-3 bg-white flex flex-wrap gap-2">
-                        {suggestedPercents.filter((p) => p !== 80).map((pct) => {
-                          const isSelected = productModal.item.suggestedPricePercent === pct;
-                          return (
-                            <button
-                              key={pct}
-                              type="button"
-                              onClick={() => {
-                                setProductModal((prev) => ({
-                                  ...prev,
-                                  item: {
-                                    ...prev.item,
-                                    suggestedPricePercent: isSelected ? null : pct,
-                                    ...(isSelected && { price: "" }),
-                                  },
-                                }));
-                                setPriceAccordionOpen(false);
-                              }}
-                              className={`px-4 py-1.5 rounded-full font-bold text-sm border transition-all ${
-                                isSelected
-                                  ? "bg-[#cc679c] text-white border-[#cc679c]"
-                                  : "bg-[#f4f3f0] text-[#cc679c] border-[#e5e7eb] hover:border-[#cc679c]/50"
-                              }`}
-                            >
-                              {pct}%{isSelected && " ✓"}
-                            </button>
-                          );
-                        })}
-                        {productModal.item.suggestedPricePercent != null && productModal.item.suggestedPricePercent !== 80 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setProductModal((prev) => ({
-                                ...prev,
-                                item: { ...prev.item, suggestedPricePercent: null, price: "" },
-                              }));
-                              setPriceAccordionOpen(false);
-                            }}
-                            className="px-4 py-1.5 rounded-full font-bold text-sm border border-red-200 text-red-400 hover:bg-red-50 transition-all"
-                          >
-                            Quitar
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
               {[{ label: "Stock Actual", field: "stock" }, { label: "Stock Mínimo", field: "minStock" }].map(({ label, field }) => (
@@ -681,6 +626,34 @@ export function InventarioView() {
               >
                 {deleting ? "Eliminando..." : "Eliminar"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {assignModal && (
+        <div className="fixed inset-0 bg-[#cc679c]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#eceae7] rounded-2xl w-full max-w-md border border-[#f4f3f0] shadow-2xl">
+            <div className="p-6 border-b border-[#f4f3f0] flex items-center justify-between">
+              <h2 className="text-[#5db8d1] font-bold text-xl">
+                Asignar {assignModal === "marca" ? "marca" : "colección"}
+              </h2>
+              <button onClick={() => setAssignModal(null)} className="text-[#cc679c]/60 hover:text-[#cc679c]"><X size={22} /></button>
+            </div>
+            <div className="p-6 space-y-2 max-h-72 overflow-y-auto">
+              {(assignModal === "marca" ? brands : collections).length === 0 && (
+                <p className="text-[#cc679c]/60 font-medium text-sm">Creá {assignModal === "marca" ? "marcas" : "colecciones"} en Configuración.</p>
+              )}
+              {(assignModal === "marca" ? brands : collections).map((group) => (
+                <button
+                  key={group.id}
+                  onClick={() => handleBulkAssign(group.id)}
+                  disabled={submitting}
+                  className="w-full text-left bg-white hover:bg-[#f4f3f0] text-[#cc679c] font-bold px-4 py-3 rounded-xl border border-[#e5e7eb] transition-colors"
+                >
+                  {group.name}
+                </button>
+              ))}
             </div>
           </div>
         </div>

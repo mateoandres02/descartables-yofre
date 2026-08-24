@@ -1,6 +1,6 @@
-import { eq, isNotNull } from "drizzle-orm";
+import { eq, count } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { products, categories } from "../db/schema.js";
+import { products, categories, priceGroups } from "../db/schema.js";
 
 const SELECT_FIELDS = {
   id: products.id,
@@ -8,9 +8,11 @@ const SELECT_FIELDS = {
   codbarra: products.codbarra,
   categoryId: products.categoryId,
   category: categories.name,
+  priceGroupId: products.priceGroupId,
+  priceGroupName: priceGroups.name,
+  priceGroupType: priceGroups.type,
   cost: products.cost,
   price: products.price,
-  suggestedPricePercent: products.suggestedPricePercent,
   stock: products.stock,
   minStock: products.minStock,
   icon: products.icon,
@@ -18,37 +20,41 @@ const SELECT_FIELDS = {
   createdAt: products.createdAt,
 };
 
+function withJoins(query) {
+  return query
+    .leftJoin(categories, eq(products.categoryId, categories.id))
+    .leftJoin(priceGroups, eq(products.priceGroupId, priceGroups.id));
+}
+
 export const ProductModel = {
   findAll() {
-    return db.select(SELECT_FIELDS).from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id));
+    return withJoins(db.select(SELECT_FIELDS).from(products));
   },
 
   findById(id) {
-    return db.select(SELECT_FIELDS).from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
+    return withJoins(db.select(SELECT_FIELDS).from(products))
       .where(eq(products.id, id))
       .then((r) => r[0]);
   },
 
   findByCodbarra(codbarra) {
-    return db.select(SELECT_FIELDS).from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
+    return withJoins(db.select(SELECT_FIELDS).from(products))
       .where(eq(products.codbarra, codbarra))
       .then((r) => r[0]);
   },
 
-  // Productos que tienen porcentaje sugerido activo
-  findWithSuggestedPercent(percent) {
-    return db.select(SELECT_FIELDS).from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .where(eq(products.suggestedPricePercent, percent));
+  findByPriceGroupId(priceGroupId) {
+    return db.select().from(products).where(eq(products.priceGroupId, priceGroupId));
   },
 
-  findAllWithSuggestedPrice() {
-    return db.select(SELECT_FIELDS).from(products)
-      .leftJoin(categories, eq(products.categoryId, categories.id))
-      .where(isNotNull(products.suggestedPricePercent));
+  countByPriceGroup() {
+    return db
+      .select({
+        priceGroupId: products.priceGroupId,
+        n: count(),
+      })
+      .from(products)
+      .groupBy(products.priceGroupId);
   },
 
   create(data) {

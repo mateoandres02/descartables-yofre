@@ -1,4 +1,4 @@
-import { eq, ne } from "drizzle-orm";
+import { eq, ne, or, like } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
 
@@ -15,6 +15,21 @@ export const UserModel = {
 
   findByEmail(email) {
     return db.select().from(users).where(eq(users.email, email)).then((r) => r[0]);
+  },
+
+  findByLogin(identifier) {
+    const value = String(identifier).trim();
+    if (!value) return Promise.resolve(undefined);
+
+    if (value.includes("@")) {
+      return this.findByEmail(value);
+    }
+
+    return db
+      .select()
+      .from(users)
+      .where(or(eq(users.email, value), like(users.email, `${value}@%`)))
+      .then((r) => r[0]);
   },
 
   create(data) {

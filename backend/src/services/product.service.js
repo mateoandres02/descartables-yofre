@@ -34,7 +34,7 @@ export const ProductService = {
     return product;
   },
 
-  async create({ name, codbarra, categoryId, cost, price, suggestedPricePercent, stock, minStock, icon, isAvailable }) {
+  async create({ name, codbarra, categoryId, priceGroupId, cost, price, stock, minStock, icon, isAvailable }) {
     if (!name || price === undefined) {
       throw { status: 400, message: "Nombre y precio son requeridos." };
     }
@@ -49,9 +49,9 @@ export const ProductService = {
       name,
       codbarra: normalizedCodbarra,
       categoryId: categoryId || null,
+      priceGroupId: priceGroupId || null,
       cost: cost ?? 0,
       price,
-      suggestedPricePercent: suggestedPricePercent != null ? Number(suggestedPricePercent) : null,
       stock: stock ?? 0,
       minStock: minStock ?? 5,
       icon: icon || "Package",
@@ -73,8 +73,26 @@ export const ProductService = {
       await assertUniqueCodbarra(updates.codbarra, Number(id));
     }
 
+    delete updates.suggestedPricePercent;
+    delete updates.useSuggestedPrice;
+
+    if ("priceGroupId" in updates) {
+      updates.priceGroupId = updates.priceGroupId || null;
+    }
+
     const [updated] = await ProductModel.update(id, updates);
     return updated;
+  },
+
+  async bulkAssign({ productIds, priceGroupId }) {
+    if (!Array.isArray(productIds) || productIds.length === 0) {
+      throw { status: 400, message: "Seleccioná al menos un producto." };
+    }
+    const groupId = priceGroupId || null;
+    for (const id of productIds) {
+      await ProductModel.update(id, { priceGroupId: groupId });
+    }
+    return { updated: productIds.length };
   },
 
   async remove(id) {

@@ -130,7 +130,7 @@ export function UsuariosView() {
               {userModal.isNew && (
                 <div>
                   <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Email</label>
-                  <input type="email" value={userModal.item.email} onChange={(e) => setUserModal((prev) => ({ ...prev, item: { ...prev.item, email: e.target.value } }))} className="w-full bg-white text-[#cc679c] placeholder-[#cc679c]/50 rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none font-bold shadow-sm transition-colors" placeholder="usuario@kolores.com" />
+                  <input type="email" value={userModal.item.email} onChange={(e) => setUserModal((prev) => ({ ...prev, item: { ...prev.item, email: e.target.value } }))} className="w-full bg-white text-[#cc679c] placeholder-[#cc679c]/50 rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none font-bold shadow-sm transition-colors" placeholder="usuario" />
                 </div>
               )}
               <div>

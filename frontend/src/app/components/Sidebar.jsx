@@ -1,4 +1,5 @@
 import { ShoppingCart, Package, DollarSign, Settings, LogOut, Home, BarChart3, Users, ShieldCheck } from "lucide-react";
+import logo from "../../img/logo-descartables.jpeg";
 
 export function Sidebar({ activeView, onViewChange, role, onLogout }) {
   const menuItems = [
@@ -17,12 +18,12 @@ export function Sidebar({ activeView, onViewChange, role, onLogout }) {
   return (
     <>
       {/* Sidebar desktop */}
-      <div className="hidden md:flex bg-[#f4f3f0] border-r border-[#e5e7eb] flex-col py-6 h-screen sticky top-0 shrink-0 group w-20 hover:w-56 transition-all duration-300 overflow-hidden z-50">
+      <div className="hidden md:flex bg-[#f4f3f0] border-r border-[#e5e7eb] flex-col py-6 h-screen sticky top-0 shrink-0 group w-20 hover:w-64 transition-all duration-300 overflow-hidden z-50">
         <div className="mb-8 w-full px-4 flex items-center h-12">
-          <div className="w-12 h-12 shrink-0 bg-[#cc679c] rounded-lg flex items-center justify-center shadow-md">
-            <span className="text-[#eceae7] font-bold text-xl">LK</span>
+          <div className="w-12 h-12 shrink-0 rounded-lg overflow-hidden shadow-md bg-[#eceae7]">
+            <img src={logo} alt="Descartables Yofre" className="w-full h-full object-contain" />
           </div>
-          <span className="ml-4 text-[#5db8d1] font-black whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">Kolores</span>
+          <span className="ml-3 text-[#cc679c] font-black text-sm leading-tight whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-300">Descartables Yofre</span>
         </div>
 
         <div className="flex-1 flex flex-col gap-2 w-full px-3">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BarChart3, DollarSign, Package, Banknote, CreditCard, TrendingDown, Wallet, RefreshCw, PackageMinus, Unlock, Lock, BookUp, Clock, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
+import { DollarSign, Package, Banknote, CreditCard, TrendingDown, Wallet, RefreshCw, PackageMinus, Unlock, Lock, BookUp, Clock, ChevronDown, ChevronUp } from "lucide-react";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
 
@@ -32,8 +32,6 @@ function fmtDDMM(str) {
 }
 
 const MONTH_NAMES_LONG  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
-const MONTH_NAMES_SHORT = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-const DAY_NAMES_SHORT   = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
 export function EstadisticasView() {
   const [period, setPeriod]               = useState("mensual");
@@ -48,7 +46,6 @@ export function EstadisticasView() {
   const [transaccionesCaja, setTransaccionesCaja] = useState([]);
   const [histTab, setHistTab]             = useState("mes"); // "mes" | "semana"
   const [expandedHist, setExpandedHist]   = useState(null);
-  const [showMontos, setShowMontos]       = useState(false);
 
   const LOG_ICONS = { Unlock, Lock, Wallet, BookUp, PackageMinus, Package };
 
@@ -104,64 +101,6 @@ export function EstadisticasView() {
   const revenue  = cajasFiltradas.reduce((s, c) => s + (c.totalIngresos     || 0), 0);
   const efectivo = cajasFiltradas.reduce((s, c) => s + (c.totalEfectivo     || 0), 0);
   const virtual  = cajasFiltradas.reduce((s, c) => s + (c.totalTransferencia|| 0), 0);
-
-  // ── Gráfico de evolución ──────────────────────────────────────────────────
-  const chartData = (() => {
-    if (period === "semanal") {
-      // Lun → Dom de la semana actual
-      const monday = new Date(semanaInicio + "T12:00:00");
-      const slots = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(monday);
-        d.setDate(monday.getDate() + i);
-        const dateStr = arFmt.format(d);
-        return { label: DAY_NAMES_SHORT[new Date(dateStr + "T12:00:00").getDay()], value: 0, dateStr };
-      });
-      cajasFiltradas.forEach((c) => {
-        const slot = slots.find((s) => s.dateStr === c.closedAt.slice(0, 10));
-        if (slot) slot.value += Number(c.totalIngresos) || 0;
-      });
-      return slots;
-
-    } else if (period === "mensual") {
-      // Semanas del mes actual (lunes a domingo), solapando inicio de mes
-      const firstMonday = new Date(getMondayOf(mesInicio) + "T12:00:00");
-      const lastDay     = new Date(today + "T12:00:00");
-      const slots = [];
-      let cur = new Date(firstMonday);
-      let semNum = 1;
-      while (cur <= lastDay) {
-        const startStr = arFmt.format(cur);
-        const endD = new Date(cur); endD.setDate(cur.getDate() + 6);
-        const endStr = arFmt.format(endD);
-        if (endStr >= mesInicio) {
-          slots.push({ label: `Sem ${semNum}`, value: 0, startStr, endStr });
-          semNum++;
-        }
-        cur.setDate(cur.getDate() + 7);
-      }
-      cajasFiltradas.forEach((c) => {
-        const ds = c.closedAt.slice(0, 10);
-        const slot = slots.find((s) => ds >= s.startStr && ds <= s.endStr);
-        if (slot) slot.value += Number(c.totalIngresos) || 0;
-      });
-      return slots.length ? slots : [{ label: "Sin datos", value: 0 }];
-
-    } else {
-      // Todo: por mes
-      const map = {};
-      cajasCerradas.forEach((c) => {
-        if (!c.closedAt) return;
-        const k = c.closedAt.slice(0, 7);
-        map[k] = (map[k] || 0) + (Number(c.totalIngresos) || 0);
-      });
-      const sorted = Object.keys(map).sort();
-      if (!sorted.length) return [{ label: "Sin datos", value: 0 }];
-      return sorted.map((k) => ({
-        label: MONTH_NAMES_SHORT[parseInt(k.slice(5, 7)) - 1] + " '" + k.slice(2, 4),
-        value: map[k],
-      }));
-    }
-  })();
 
   // ── Gastos filtrados ──────────────────────────────────────────────────────
   const gastosDiariosFiltrados = gastosDiarios.filter((g) => {
@@ -233,19 +172,10 @@ export function EstadisticasView() {
   })();
 
   // ── Misc ──────────────────────────────────────────────────────────────────
-  const maxChartValue   = Math.max(...chartData.map((d) => d.value), 1);
   const balanceNeto     = revenue - totalGastosOperativos;
   const margenPorcentaje = revenue > 0 ? (balanceNeto / revenue) * 100 : 0;
-
-  const monto = (value, cls = "") =>
-    showMontos
-      ? <span className={cls}>${value}</span>
-      : <span className="tracking-widest select-none text-[#cc679c]/30 font-black">••••</span>;
-
+  const monto = (value, cls = "") => <span className={cls}>${value}</span>;
   const PERIOD_LABELS   = { todo:"Todo", mensual:"Mensual", semanal:"Semanal" };
-  const chartTitle      = period === "semanal" ? `Semana ${fmtDDMM(semanaInicio)} – ${fmtDDMM(getSundayOf(semanaInicio))}`
-                        : period === "mensual" ? `${MONTH_NAMES_LONG[parseInt(mesInicio.slice(5,7))-1]} ${mesInicio.slice(0,4)}`
-                        : "Histórico por mes";
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -259,14 +189,6 @@ export function EstadisticasView() {
           <p className="text-[#cc679c]/80 font-medium text-sm">Rendimiento y métricas de tu local</p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-          <button
-            onClick={() => setShowMontos((v) => !v)}
-            title={showMontos ? "Ocultar montos" : "Mostrar montos"}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all shadow-sm ${showMontos ? "bg-[#cc679c] text-[#eceae7] border-[#cc679c]" : "bg-[#f4f3f0] text-[#cc679c]/60 border-[#e5e7eb] hover:text-[#cc679c]"}`}
-          >
-            {showMontos ? <Eye size={16} /> : <EyeOff size={16} />}
-            {showMontos ? "Ocultar montos" : "Mostrar montos"}
-          </button>
           <div className="bg-[#f4f3f0] p-1 rounded-xl border border-[#e5e7eb] shadow-sm flex gap-1">
             {["todo","mensual","semanal"].map((p) => (
               <button key={p} onClick={() => setPeriod(p)}
@@ -363,9 +285,7 @@ export function EstadisticasView() {
             <Wallet size={20}/><h3 className="font-bold">Balance Neto</h3>
           </div>
           <p className="text-3xl font-black">
-            {showMontos
-              ? <span className={balanceNeto>=0?"text-green-600":"text-[#cc679c]"}>{balanceNeto>=0?"+":"-"}${Math.abs(balanceNeto).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
-              : <span className="tracking-widest select-none text-[#cc679c]/30 font-black">••••</span>}
+            <span className={balanceNeto>=0?"text-green-600":"text-[#cc679c]"}>{balanceNeto>=0?"+":"-"}${Math.abs(balanceNeto).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
           </p>
           <p className={`text-sm mt-1 mb-4 font-bold ${balanceNeto>=0?"text-green-600/70":"text-[#cc679c]/70"}`}>
             Rentabilidad: {margenPorcentaje.toFixed(1)}%
@@ -374,38 +294,18 @@ export function EstadisticasView() {
             <p className="text-xs text-[#cc679c]/70 uppercase tracking-wider font-bold mb-1">Liquidez Disponible</p>
             <div className="flex justify-between items-center text-sm">
               <span className="text-[#cc679c] font-medium">En Efectivo</span>
-              {showMontos ? <span className="text-green-600 font-bold">${disponibleEfectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span> : <span className="tracking-widest text-[#cc679c]/30 font-black select-none">••••</span>}
+              <span className="text-green-600 font-bold">${disponibleEfectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-[#cc679c] font-medium">Virtual</span>
-              {showMontos ? <span className="text-[#5db8d1] font-bold">${disponibleVirtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span> : <span className="tracking-widest text-[#cc679c]/30 font-black select-none">••••</span>}
+              <span className="text-[#5db8d1] font-bold">${disponibleVirtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Gráfico + Movimientos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
-        <div className="lg:col-span-2 bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-8">
-            <BarChart3 className="text-[#cc679c]" size={24}/>
-            <h2 className="text-[#5db8d1] text-xl font-bold">Evolución de Ingresos — {chartTitle}</h2>
-          </div>
-          <div className="h-64 flex items-end justify-between gap-2 md:gap-4 mt-8">
-            {chartData.map((d, i) => {
-              const h = Math.max((d.value / maxChartValue) * 100, 5);
-              return (
-                <div key={i} className="flex-1 flex flex-col items-center gap-3 group relative">
-                  <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-[#cc679c] text-[#eceae7] text-xs font-bold py-1 px-2 rounded pointer-events-none shadow-md">
-                    ${d.value.toFixed(2)}
-                  </div>
-                  <div className="w-full max-w-[4rem] bg-[#e3ac4d] hover:bg-[#cc679c] transition-colors rounded-t-sm shadow-sm" style={{height:`${h}%`}}/>
-                  <span className="text-xs text-[#cc679c]/80 font-bold whitespace-nowrap">{d.label}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      {/* Movimientos */}
+      <div className="mb-12">
         <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] p-6 flex flex-col shadow-sm">
           <div className="flex items-center gap-3 mb-6">
             <Clock className="text-[#cc679c]" size={24}/>

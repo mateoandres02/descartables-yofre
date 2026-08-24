@@ -14,7 +14,7 @@ import dailyExpenseRoutes from "./routes/dailyExpense.routes.js";
 import statsRoutes from "./routes/stats.routes.js";
 import internalWithdrawalRoutes from "./routes/internalWithdrawal.routes.js";
 import subscriptionRoutes from "./routes/subscription.routes.js";
-import settingsRoutes from "./routes/settings.routes.js";
+import priceGroupRoutes from "./routes/priceGroup.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -64,7 +64,7 @@ app.use("/api/daily-expenses", dailyExpenseRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/internal-withdrawals", internalWithdrawalRoutes);
 app.use("/api/subscription", subscriptionRoutes);
-app.use("/api/settings", settingsRoutes);
+app.use("/api/price-groups", priceGroupRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 
@@ -81,7 +81,7 @@ app.use((err, req, res, next) => {
 
 if (process.env.VERCEL !== "1") {
   app.listen(PORT, () => {
-    console.log(`🚀 Servidor Librería Kolores corriendo en http://localhost:${PORT}`);
+    console.log(`🚀 Servidor Descartables Yofre corriendo en http://localhost:${PORT}`);
     console.log(`📦 Base de datos: ${process.env.TURSO_DATABASE_URL}`);
   });
 }

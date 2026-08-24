@@ -1,8 +1,186 @@
 ﻿import { useState, useEffect } from "react";
-import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Eye, EyeOff, TrendingUp } from "lucide-react";
+import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Eye, EyeOff, Bookmark, Layers, Percent } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
+
+function PriceGroupPanel({ title, hint, type, icon: Icon, groups, onReload }) {
+  const [nameModal, setNameModal] = useState({ isOpen: false, item: null });
+  const [increaseModal, setIncreaseModal] = useState(null);
+  const [percent, setPercent] = useState("");
+  const [updateCost, setUpdateCost] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const noun = type === "marca" ? "marca" : "colección";
+
+  const handleSaveName = async () => {
+    const name = nameModal.item?.name?.trim();
+    if (!name) { toast.error("El nombre es obligatorio"); return; }
+    if (saving) return;
+    setSaving(true);
+    try {
+      if (nameModal.item.id) {
+        await api.put(`/price-groups/${nameModal.item.id}`, { name });
+        toast.success("Nombre actualizado");
+      } else {
+        await api.post("/price-groups", { name, type });
+        toast.success(`${noun[0].toUpperCase() + noun.slice(1)} creada en 0%`);
+      }
+      setNameModal({ isOpen: false, item: null });
+      onReload();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async (id) => {
+    try {
+      await api.delete(`/price-groups/${id}`);
+      toast.success("Eliminada");
+      onReload();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error");
+    }
+  };
+
+  const handleApplyIncrease = async () => {
+    const value = Number(percent);
+    if (!percent || Number.isNaN(value) || value === 0) {
+      toast.error("Ingresá el porcentaje de aumento (ej. 10)");
+      return;
+    }
+    if (saving) return;
+    setSaving(true);
+    try {
+      const { data } = await api.post(`/price-groups/${increaseModal.id}/increase`, {
+        percent: value,
+        updateCost,
+      });
+      toast.success(`Aumento del ${value}% aplicado a ${data.updatedCount} productos`);
+      setIncreaseModal(null);
+      setPercent("");
+      setUpdateCost(true);
+      onReload();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error al aplicar el aumento");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] overflow-hidden shadow-sm flex flex-col">
+        <div className="p-6 border-b border-[#e5e7eb] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Icon className="text-[#cc679c]" size={24} />
+            <div>
+              <h2 className="text-[#5db8d1] text-xl font-bold">{title}</h2>
+              <p className="text-[#cc679c]/60 font-medium text-xs mt-0.5">{hint}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setNameModal({ isOpen: true, item: { name: "" } })}
+            className="text-[#cc679c] hover:text-[#eceae7] hover:bg-[#cc679c] transition-colors p-2 bg-[#eceae7] rounded-lg shadow-sm font-bold"
+          >
+            <Plus size={20} />
+          </button>
+        </div>
+        <div className="p-6 space-y-3">
+          {groups.map((group) => (
+            <div key={group.id} className="flex flex-col sm:flex-row sm:items-center gap-3 bg-[#eceae7] p-4 rounded-xl border border-[#e5e7eb] shadow-sm">
+              <div className="flex-1 min-w-0">
+                <span className="text-[#cc679c] font-bold block truncate">{group.name}</span>
+                <span className="text-[#cc679c]/60 font-medium text-xs">
+                  {group.productCount} producto{group.productCount === 1 ? "" : "s"} · último aumento {Number(group.lastIncreasePercent || 0)}%
+                </span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => { setIncreaseModal(group); setPercent(""); setUpdateCost(true); }}
+                  className="flex items-center gap-1.5 bg-[#cc679c] text-[#eceae7] font-bold text-xs px-3 py-2 rounded-lg hover:bg-[#b85889] transition-colors"
+                >
+                  <Percent size={14} /> Aplicar aumento
+                </button>
+                <button onClick={() => setNameModal({ isOpen: true, item: { id: group.id, name: group.name } })} className="text-[#5db8d1] hover:text-[#4a9bb8] p-2 transition-colors"><Edit2 size={18} /></button>
+                <button onClick={() => handleRemove(group.id)} className="text-[#cc679c]/60 hover:text-red-500 p-2 transition-colors"><Trash2 size={18} /></button>
+              </div>
+            </div>
+          ))}
+          {groups.length === 0 && (
+            <p className="text-[#cc679c]/60 font-medium text-sm">Sin {noun}s. Creá una para agrupar productos y subir precios juntos.</p>
+          )}
+        </div>
+      </div>
+
+      {nameModal.isOpen && nameModal.item && (
+        <div className="fixed inset-0 bg-[#cc679c]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#eceae7] rounded-2xl w-full max-w-md border border-[#f4f3f0] shadow-2xl">
+            <div className="p-6 border-b border-[#f4f3f0] flex items-center justify-between">
+              <h2 className="text-[#5db8d1] font-bold text-2xl">{nameModal.item.id ? `Editar ${noun}` : `Nueva ${noun}`}</h2>
+              <button onClick={() => setNameModal({ isOpen: false, item: null })} className="text-[#cc679c]/60 hover:text-[#cc679c]"><X size={24} /></button>
+            </div>
+            <div className="p-6">
+              <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Nombre</label>
+              <input
+                type="text"
+                value={nameModal.item.name}
+                onChange={(e) => setNameModal((prev) => ({ ...prev, item: { ...prev.item, name: e.target.value } }))}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveName()}
+                className="w-full bg-white text-[#cc679c] rounded-xl px-4 py-3 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none font-bold shadow-sm"
+                placeholder={type === "marca" ? "Ej. Pepito" : "Ej. Bolsas"}
+                autoFocus
+              />
+            </div>
+            <div className="p-6 border-t border-[#f4f3f0] flex gap-4">
+              <button onClick={() => setNameModal({ isOpen: false, item: null })} className="flex-1 bg-[#f4f3f0] hover:bg-[#e5e7eb] text-[#cc679c] font-bold py-4 rounded-xl">Cancelar</button>
+              <button onClick={handleSaveName} disabled={saving} className="flex-1 bg-[#cc679c] hover:bg-[#b85889] disabled:opacity-50 text-[#eceae7] font-bold py-4 rounded-xl">{saving ? "Guardando..." : "Guardar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {increaseModal && (
+        <div className="fixed inset-0 bg-[#cc679c]/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#eceae7] rounded-2xl w-full max-w-md border border-[#f4f3f0] shadow-2xl">
+            <div className="p-6 border-b border-[#f4f3f0]">
+              <h2 className="text-[#5db8d1] font-bold text-2xl">Aumento · {increaseModal.name}</h2>
+              <p className="text-[#cc679c]/70 font-medium text-sm mt-2">
+                Se multiplica el precio de venta de los <span className="font-bold">{increaseModal.productCount} productos</span> de esta {noun}. Cada aviso de aumento se aplica sobre el precio actual.
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-[#cc679c]/80 font-bold text-sm block mb-2">Porcentaje de aumento</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={percent}
+                    onChange={(e) => setPercent(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    placeholder="10"
+                    step="0.1"
+                    className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 pr-10 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#cc679c]/50 font-bold">%</span>
+                </div>
+              </div>
+              <label className="flex items-center gap-3 text-sm text-[#cc679c] font-medium cursor-pointer">
+                <input type="checkbox" checked={updateCost} onChange={(e) => setUpdateCost(e.target.checked)} className="w-4 h-4 accent-[#cc679c]" />
+                Actualizar también el costo
+              </label>
+            </div>
+            <div className="p-6 border-t border-[#f4f3f0] flex gap-4">
+              <button onClick={() => setIncreaseModal(null)} className="flex-1 bg-[#f4f3f0] hover:bg-[#e5e7eb] text-[#cc679c] font-bold py-4 rounded-xl">Cancelar</button>
+              <button onClick={handleApplyIncrease} disabled={saving || increaseModal.productCount === 0} className="flex-1 bg-[#cc679c] hover:bg-[#b85889] disabled:opacity-50 text-[#eceae7] font-bold py-4 rounded-xl">{saving ? "Aplicando..." : "Aplicar"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 export function ConfiguracionView() {
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -15,25 +193,24 @@ export function ConfiguracionView() {
   const [showGastos, setShowGastos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleteExpenseConfirm, setDeleteExpenseConfirm] = useState(null);
-
-  // Porcentajes sugeridos
-  const [suggestedPercents, setSuggestedPercents] = useState([]);
-  const [newPercent, setNewPercent] = useState("");
-  const [addingPercent, setAddingPercent] = useState(false);
+  const [brands, setBrands] = useState([]);
+  const [collections, setCollections] = useState([]);
 
   async function fetchData() {
     setLoading(true);
     try {
-      const [pRes, eRes, cRes, sRes] = await Promise.all([
+      const [pRes, eRes, cRes, bRes, colRes] = await Promise.all([
         api.get("/payment-methods"),
         api.get("/fixed-expenses"),
         api.get("/categories"),
-        api.get("/settings/suggested-prices"),
+        api.get("/price-groups", { params: { type: "marca" } }),
+        api.get("/price-groups", { params: { type: "coleccion" } }),
       ]);
       setPaymentMethods(pRes.data);
       setExpenses(eRes.data);
       setCategories(cRes.data);
-      setSuggestedPercents(sRes.data.percents ?? []);
+      setBrands(bRes.data);
+      setCollections(colRes.data);
     } finally {
       setLoading(false);
     }
@@ -135,35 +312,6 @@ export function ConfiguracionView() {
     } catch (err) { toast.error(err.response?.data?.message || "Error"); }
   };
 
-  // ── Porcentajes sugeridos ─────────────────────────────
-  const handleAddPercent = async () => {
-    const val = Number(newPercent);
-    if (!newPercent || isNaN(val) || val < 0) { toast.error("Ingresá un porcentaje válido"); return; }
-    if (val === 80) { toast.error("El 80% ya está disponible por defecto en todos los productos"); return; }
-    if (addingPercent) return;
-    setAddingPercent(true);
-    try {
-      const res = await api.post("/settings/suggested-prices", { percent: val });
-      setSuggestedPercents(res.data.percents);
-      setNewPercent("");
-      toast.success(`${val}% agregado`);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Error al agregar");
-    } finally {
-      setAddingPercent(false);
-    }
-  };
-
-  const handleRemovePercent = async (pct) => {
-    try {
-      const res = await api.delete(`/settings/suggested-prices/${pct}`);
-      setSuggestedPercents(res.data.percents);
-      toast.success(`${pct}% eliminado`);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Error al eliminar");
-    }
-  };
-
   return (
     <div className="flex-1 p-4 pb-20 md:p-8 overflow-y-auto relative">
       {loading && <Loader />}
@@ -173,6 +321,24 @@ export function ConfiguracionView() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+
+        <PriceGroupPanel
+          title="Marcas"
+          hint="Cuando una marca avisa aumento, se reajustan todos sus productos."
+          type="marca"
+          icon={Bookmark}
+          groups={brands}
+          onReload={fetchData}
+        />
+
+        <PriceGroupPanel
+          title="Colecciones"
+          hint="Para productos sin marca (bolsas, vasos genéricos, etc.)."
+          type="coleccion"
+          icon={Layers}
+          groups={collections}
+          onReload={fetchData}
+        />
 
         {/* Métodos de pago */}
         <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] overflow-hidden shadow-sm flex flex-col">
@@ -255,81 +421,6 @@ export function ConfiguracionView() {
               </div>
             ))}
             {categories.length === 0 && <p className="text-[#cc679c]/60 font-medium text-sm">Sin categorías configuradas</p>}
-          </div>
-        </div>
-
-        {/* Precios de Venta Sugeridos */}
-        <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] overflow-hidden shadow-sm flex flex-col">
-          <div className="p-6 border-b border-[#e5e7eb] flex items-center gap-3">
-            <TrendingUp className="text-[#e3ac4d]" size={24} />
-            <h2 className="text-[#5db8d1] text-xl font-bold">Precios de Venta Sugeridos</h2>
-          </div>
-          <div className="p-6 space-y-5">
-            <p className="text-[#cc679c]/70 font-medium text-sm leading-relaxed">
-              Cargá uno o más porcentajes de ganancia sobre el costo. Al crear o editar un producto, podrás elegir uno para que se calcule el precio automáticamente.
-              <br />
-              <span className="font-bold text-[#cc679c]/90">Fórmula:</span> Precio = Costo × (1 + %/100), redondeado al próximo centenar.
-            </p>
-
-            {/* 80% fijo (siempre presente, no configurable) */}
-            <div className="flex items-center gap-2 bg-[#cc679c]/5 border border-[#cc679c]/20 rounded-xl px-4 py-3">
-              <TrendingUp size={15} className="text-[#cc679c]/50 shrink-0" />
-              <p className="text-[#cc679c]/70 font-medium text-sm flex-1">
-                El <span className="font-black text-[#cc679c]">80%</span> está disponible por defecto como acceso rápido en todos los productos.
-              </p>
-            </div>
-
-            {/* Chips de porcentajes adicionales (excluye 80%) */}
-            <div className="flex flex-wrap gap-2 min-h-[40px]">
-              {suggestedPercents.filter((p) => p !== 80).length === 0 && (
-                <p className="text-[#cc679c]/40 font-medium text-sm italic">Sin porcentajes adicionales configurados</p>
-              )}
-              {suggestedPercents.filter((p) => p !== 80).map((pct) => (
-                <div key={pct} className="flex items-center gap-1.5 bg-[#cc679c]/10 border border-[#cc679c]/30 text-[#cc679c] font-black rounded-full px-4 py-1.5 text-sm">
-                  <span>{pct}%</span>
-                  <button
-                    onClick={() => handleRemovePercent(pct)}
-                    className="text-[#cc679c]/50 hover:text-red-500 transition-colors ml-1"
-                    title="Eliminar"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Input para agregar nuevo porcentaje */}
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1">
-                <input
-                  type="number"
-                  value={newPercent}
-                  onChange={(e) => setNewPercent(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  onKeyDown={(e) => e.key === "Enter" && handleAddPercent()}
-                  placeholder="Ej. 80"
-                  min="0"
-                  step="1"
-                  className="w-full bg-white text-[#cc679c] font-bold rounded-xl px-4 py-3 pr-10 border border-[#e5e7eb] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none shadow-sm transition-all"
-                />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[#cc679c]/50 font-bold">%</span>
-              </div>
-              <button
-                onClick={handleAddPercent}
-                disabled={!newPercent || addingPercent}
-                className="bg-[#cc679c] hover:bg-[#b85889] disabled:bg-[#e5e7eb] disabled:text-[#cc679c]/40 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-md shrink-0 flex items-center gap-2"
-              >
-                <Plus size={18} />
-                Agregar
-              </button>
-            </div>
-
-            {newPercent !== "" && !isNaN(Number(newPercent)) && Number(newPercent) > 0 && (
-              <div className="bg-[#eceae7] border border-[#e5e7eb] rounded-xl p-3 text-sm flex items-center justify-between">
-                <span className="text-[#cc679c]/70 font-medium">Vista previa con costo $1.000:</span>
-                <span className="text-[#cc679c] font-black">${Math.ceil((1000 * (1 + Number(newPercent) / 100)) / 5) * 5}</span>
-              </div>
-            )}
           </div>
         </div>
 
