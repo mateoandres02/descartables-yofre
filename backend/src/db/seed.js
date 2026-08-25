@@ -6,6 +6,7 @@ import {
   categories,
   paymentMethods,
   subscriptionConfig,
+  appSettings,
 } from "./schema.js";
 
 function requireEnv(name) {
@@ -47,10 +48,12 @@ async function seed() {
 
   // Categorías
   await db.insert(categories).values([
-    { name: "Libros" },
-    { name: "Cuadernos" },
-    { name: "Lapiceras" },
-    { name: "Arte" },
+    { name: "Vasos" },
+    { name: "Platos" },
+    { name: "Cubiertos" },
+    { name: "Envases" },
+    { name: "Bolsas" },
+    { name: "Limpieza" },
     { name: "Varios" },
   ]).onConflictDoNothing();
 
@@ -66,6 +69,12 @@ async function seed() {
   ]).onConflictDoNothing();
 
   console.log("✅ Métodos de pago creados");
+
+  await db.insert(appSettings).values({
+    key: "suggested_price_percents",
+    value: JSON.stringify([80]),
+  }).onConflictDoNothing();
+  console.log("✅ Porcentaje de precio sugerido inicializado");
 
   console.log("✅ Sin productos ni gastos fijos de ejemplo — la app arranca limpia");
 

@@ -1,5 +1,22 @@
 @import './tailwind.css';
 
+:root {
+  --color-background: #F4EFE7;
+  --color-surface: #DCCAB6;
+  --color-primary: #D49A7A;
+  --color-secondary: #B8654A;
+  --color-success: #8C8F6E;
+  --color-foreground: #5E4A3C;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
 /* Ocultar scrollbar horizontal en filtros de categoría */
 .scrollbar-hide {
   -ms-overflow-style: none;

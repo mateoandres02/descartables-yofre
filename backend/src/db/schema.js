@@ -178,6 +178,39 @@ export const internalWithdrawals = sqliteTable("internal_withdrawals", {
   createdAt: text("created_at").default(sql`(datetime('now','localtime'))`),
 });
 
+// ─── Clientes (cuenta corriente) ──────────────────────────────────────────────
+
+export const customers = sqliteTable("customers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  lastName: text("last_name").notNull(),
+  document: text("document").notNull().unique(),
+  phone: text("phone"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").default(sql`(datetime('now','localtime'))`),
+});
+
+// ─── Movimientos de cuenta corriente ──────────────────────────────────────────
+
+export const accountMovements = sqliteTable("account_movements", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  customerId: integer("customer_id")
+    .notNull()
+    .references(() => customers.id, { onDelete: "cascade" }),
+  type: text("type", { enum: ["cargo", "pago"] }).notNull(),
+  amount: real("amount").notNull(), // siempre positivo
+  transactionId: integer("transaction_id").references(() => transactions.id, {
+    onDelete: "set null",
+  }),
+  methodName: text("method_name"), // solo en pagos
+  detail: text("detail"), // snapshot JSON de ítems, solo en cargos
+  registerId: integer("register_id").references(() => cashRegisters.id, {
+    onDelete: "set null",
+  }),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: text("created_at").default(sql`(datetime('now','localtime'))`),
+});
+
 // ─── Configuración de suscripción (bomba lógica) ──────────────────────────────
 
 export const subscriptionConfig = sqliteTable("subscription_config", {

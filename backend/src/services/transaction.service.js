@@ -2,10 +2,12 @@ import { TransactionModel } from "../models/transaction.model.js";
 import { CashRegisterModel } from "../models/cashRegister.model.js";
 import { ProductModel } from "../models/product.model.js";
 import { ProductService } from "./product.service.js";
+import { CustomerService } from "./customer.service.js";
 import { getArgentinaTime } from "../db/timeUtils.js";
+import { isAccountMethod, round2 } from "../constants.js";
 
 export const TransactionService = {
-  async create({ total, payments, items }) {
+  async create({ total, payments, items, customerId }, userId) {
     if (!payments?.length || !items?.length) {
       throw { status: 400, message: "Se requieren pagos e ítems para la transacción." };
     }
@@ -18,6 +20,28 @@ export const TransactionService = {
       throw { status: 400, message: "No hay una caja abierta. Abra la caja antes de registrar ventas." };
     }
 
+    const paymentsData = payments.map((p) => ({
+      paymentMethodId: p.methodId || null,
+      methodName: p.type || p.methodName || "Efectivo",
+      baseAmount: Number(p.baseAmount || p.amount),
+      surchargePercent: Number(p.surchargePercent || 0),
+      amount: Number(p.amount),
+    }));
+
+    // Lo que se carga a la cuenta es solo la porción fiada, no el total de la venta
+    const accountAmount = round2(
+      paymentsData
+        .filter((p) => isAccountMethod(p.methodName))
+        .reduce((sum, p) => sum + p.amount, 0)
+    );
+
+    if (accountAmount > 0 && !customerId) {
+      throw {
+        status: 400,
+        message: "Se requiere un cliente para cargar la venta a cuenta corriente.",
+      };
+    }
+
     const { date, time, datetime } = getArgentinaTime();
 
     const tx = await TransactionModel.create({
@@ -27,15 +51,6 @@ export const TransactionService = {
       time,
       createdAt: datetime,
     });
-
-    const paymentsData = payments.map((p) => ({
-      transactionId: tx.id,
-      paymentMethodId: p.methodId || null,
-      methodName: p.type || p.methodName || "Efectivo",
-      baseAmount: Number(p.baseAmount || p.amount),
-      surchargePercent: Number(p.surchargePercent || 0),
-      amount: Number(p.amount),
-    }));
 
     const itemsData = [];
     const stockDeductions = [];
@@ -79,15 +94,30 @@ export const TransactionService = {
       });
     }
 
-    const createdPayments = await TransactionModel.createPayments(paymentsData);
+    const createdPayments = await TransactionModel.createPayments(
+      paymentsData.map((p) => ({ ...p, transactionId: tx.id }))
+    );
     const createdItems = await TransactionModel.createItems(itemsData);
 
     for (const deduction of stockDeductions) {
       await ProductService.decrementStock(deduction.productId, deduction.units);
     }
 
+    if (accountAmount > 0) {
+      await CustomerService.chargeSale({
+        customerId,
+        amount: accountAmount,
+        transactionId: tx.id,
+        items: itemsData,
+        registerId: openRegister.id,
+        userId,
+      });
+    }
+
     return {
       ...tx,
+      customerId: customerId || null,
+      accountAmount,
       payments: createdPayments,
       items: createdItems,
     };

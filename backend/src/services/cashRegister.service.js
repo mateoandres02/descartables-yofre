@@ -1,23 +1,47 @@
 import { CashRegisterModel } from "../models/cashRegister.model.js";
 import { TransactionModel } from "../models/transaction.model.js";
 import { DailyExpenseModel } from "../models/dailyExpense.model.js";
+import { AccountMovementModel } from "../models/accountMovement.model.js";
 import { getArgentinaTime } from "../db/timeUtils.js";
+import { isAccountMethod, isCashMethod } from "../constants.js";
 
-function buildClosedRegisterSummary(register, txs, payments, items, dailyExpenses) {
+function buildClosedRegisterSummary(
+  register,
+  txs,
+  payments,
+  items,
+  dailyExpenses,
+  accountPayments = []
+) {
   const totalIngresos = txs.reduce((sum, t) => sum + t.total, 0);
-  const totalEfectivo = payments
-    .filter((p) => p.methodName.toLowerCase() === "efectivo")
+
+  // El fiado no ingresa plata a la caja: se excluye del arqueo
+  const cobrados = payments.filter((p) => !isAccountMethod(p.methodName));
+  const totalCuentaCorriente = payments
+    .filter((p) => isAccountMethod(p.methodName))
     .reduce((sum, p) => sum + p.amount, 0);
-  const totalTransferencia = payments
-    .filter((p) => p.methodName.toLowerCase() !== "efectivo")
+
+  // Los cobros de deudas previas sí entran al arqueo según su método
+  const cobrosEfectivo = accountPayments
+    .filter((p) => isCashMethod(p.methodName))
     .reduce((sum, p) => sum + p.amount, 0);
-  const totalSurcharges = payments.reduce(
+  const cobrosVirtual = accountPayments
+    .filter((p) => !isCashMethod(p.methodName))
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const totalEfectivo =
+    cobrados.filter((p) => isCashMethod(p.methodName)).reduce((sum, p) => sum + p.amount, 0) +
+    cobrosEfectivo;
+  const totalTransferencia =
+    cobrados.filter((p) => !isCashMethod(p.methodName)).reduce((sum, p) => sum + p.amount, 0) +
+    cobrosVirtual;
+  const totalSurcharges = cobrados.reduce(
     (sum, p) => sum + (p.amount - p.baseAmount),
     0
   );
 
   const surchargeBreakdown = {};
-  for (const p of payments) {
+  for (const p of cobrados) {
     if (p.surchargePercent > 0) {
       surchargeBreakdown[p.methodName] =
         (surchargeBreakdown[p.methodName] || 0) + (p.amount - p.baseAmount);
@@ -47,6 +71,8 @@ function buildClosedRegisterSummary(register, txs, payments, items, dailyExpense
     totalEfectivo,
     totalTransferencia,
     totalSurcharges,
+    totalCuentaCorriente,
+    totalCobrosCuenta: cobrosEfectivo + cobrosVirtual,
     surchargeBreakdown: Object.entries(surchargeBreakdown).map(([method, amount]) => ({
       method,
       amount,
@@ -112,7 +138,17 @@ export const CashRegisterService = {
       }
 
       const dailyExpenses = await DailyExpenseModel.findByRegisterId(register.id);
-      result.push(buildClosedRegisterSummary(register, txs, allPayments, allItems, dailyExpenses));
+      const accountPayments = await AccountMovementModel.findPaymentsByRegisterId(register.id);
+      result.push(
+        buildClosedRegisterSummary(
+          register,
+          txs,
+          allPayments,
+          allItems,
+          dailyExpenses,
+          accountPayments
+        )
+      );
     }
 
     return result;

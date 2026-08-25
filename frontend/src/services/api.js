@@ -56,7 +56,7 @@ if (USE_LOCAL_MOCK) {
     ],
     "/stats/restock": { restockCost: 18500 },
     "/stats/activity-log": [
-      { id: "caja-open-1", type: "Apertura de Caja", details: "Fondo inicial: $15000", date: new Date().toISOString(), icon: "Unlock", color: "text-green-500", bg: "bg-green-500/10" }
+      { id: "caja-open-1", type: "Apertura de Caja", details: "Fondo inicial: $15000", date: new Date().toISOString(), icon: "Unlock", color: "text-success", bg: "bg-success/10" }
     ],
     // Agregamos mocks genéricos para otras rutas (como login, mesas, etc.)
     "/categories": [{ id: 1, name: "Libros" }, { id: 2, name: "Útiles" }, { id: 3, name: "Infantiles" }],
@@ -71,7 +71,7 @@ if (USE_LOCAL_MOCK) {
         // Interceptar el Login dinámicamente según el email ingresado
         if (config.method === 'post' && url.includes('/auth/login')) {
           const body = JSON.parse(config.data);
-          if (body.email === 'cajero@kolores.com') {
+          if (body.email === 'cajero@yofre.com') {
             return resolve({ data: { token: "token-cajero", user: { id: 2, name: "Cajero Demo", role: "cajero" } }, status: 200, config, headers: {} });
           }
           return resolve({ data: { token: "token-admin", user: { id: 1, name: "Juanjo (Admin)", role: "admin" } }, status: 200, config, headers: {} });
@@ -110,8 +110,8 @@ if (USE_LOCAL_MOCK) {
             date: new Date().toISOString(),
             details: `${body.quantity}x ${productName}`,
             icon: "PackageMinus",
-            color: "text-[#e3ac4d]",
-            bg: "bg-[#e3ac4d]/20"
+            color: "text-primary",
+            bg: "bg-primary/20"
           });
           return resolve({ data: { success: true }, status: 201, config, headers: {} });
         }

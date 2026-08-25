@@ -185,14 +185,14 @@ export function EstadisticasView() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8 gap-3">
         <div>
-          <h1 className="text-[#cc679c] font-bold text-2xl md:text-4xl mb-1 md:mb-2">Estadísticas</h1>
-          <p className="text-[#cc679c]/80 font-medium text-sm">Rendimiento y métricas de tu local</p>
+          <h1 className="text-foreground font-bold text-2xl md:text-4xl mb-1 md:mb-2">Estadísticas</h1>
+          <p className="text-foreground/80 font-medium text-sm">Rendimiento y métricas de tu local</p>
         </div>
         <div className="flex items-center gap-3 self-start sm:self-auto flex-wrap">
-          <div className="bg-[#f4f3f0] p-1 rounded-xl border border-[#e5e7eb] shadow-sm flex gap-1">
+          <div className="bg-surface p-1 rounded-xl border border-foreground/15 shadow-sm flex gap-1">
             {["todo","mensual","semanal"].map((p) => (
               <button key={p} onClick={() => setPeriod(p)}
-                className={`px-4 md:px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm ${period === p ? "bg-[#cc679c] text-[#eceae7]" : "bg-transparent text-[#cc679c]/70 hover:text-[#cc679c]"}`}>
+                className={`px-4 md:px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm ${period === p ? "bg-secondary text-background" : "bg-transparent text-foreground/70 hover:text-foreground"}`}>
                 {PERIOD_LABELS[p]}
               </button>
             ))}
@@ -202,29 +202,29 @@ export function EstadisticasView() {
 
       {/* Tarjetas stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-8">
-        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm">
-          <div className="flex items-center gap-3 mb-4 text-green-600"><DollarSign size={20}/><h3 className="text-[#cc679c]/80 font-bold">Ingresos Totales</h3></div>
-          <p className="text-3xl font-black">{monto(revenue.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
+        <div className="bg-surface rounded-xl p-6 border border-foreground/15 shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-success"><DollarSign size={20}/><h3 className="text-foreground/80 font-bold">Ingresos Totales</h3></div>
+          <p className="text-3xl font-black">{monto(revenue.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-foreground")}</p>
         </div>
-        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm">
-          <div className="flex items-center gap-3 mb-4 text-green-600"><Banknote size={20}/><h3 className="text-[#cc679c]/80 font-bold">En Efectivo</h3></div>
-          <p className="text-3xl font-black">{monto(efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
-          <p className="text-[#cc679c]/60 font-medium text-sm mt-2">{revenue>0?((efectivo/revenue)*100).toFixed(1):0}% del total</p>
+        <div className="bg-surface rounded-xl p-6 border border-foreground/15 shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-success"><Banknote size={20}/><h3 className="text-foreground/80 font-bold">En Efectivo</h3></div>
+          <p className="text-3xl font-black">{monto(efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-foreground")}</p>
+          <p className="text-foreground/60 font-medium text-sm mt-2">{revenue>0?((efectivo/revenue)*100).toFixed(1):0}% del total</p>
         </div>
-        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#5db8d1]/30 shadow-sm">
-          <div className="flex items-center gap-3 mb-4 text-[#5db8d1]"><CreditCard size={20}/><h3 className="text-[#cc679c]/80 font-bold">Virtual</h3></div>
-          <p className="text-3xl font-black">{monto(virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#5db8d1]")}</p>
-          <p className="text-[#5db8d1]/60 font-medium text-sm mt-2">Tarjetas, transferencias y QR</p>
+        <div className="bg-surface rounded-xl p-6 border border-primary/30 shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-primary"><CreditCard size={20}/><h3 className="text-foreground/80 font-bold">Virtual</h3></div>
+          <p className="text-3xl font-black">{monto(virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-primary")}</p>
+          <p className="text-primary/60 font-medium text-sm mt-2">Tarjetas, transferencias y QR</p>
         </div>
-        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm">
-          <div className="flex items-center gap-3 mb-4 text-[#cc679c]"><RefreshCw size={20}/><h3 className="text-[#cc679c]/80 font-bold">Gasto de Restock</h3></div>
-          <p className="text-3xl font-black">{monto(restockCost.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
-          <p className="text-[#cc679c]/60 font-medium text-sm mt-2">Costo para reponer lo vendido</p>
+        <div className="bg-surface rounded-xl p-6 border border-foreground/15 shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-foreground"><RefreshCw size={20}/><h3 className="text-foreground/80 font-bold">Gasto de Restock</h3></div>
+          <p className="text-3xl font-black">{monto(restockCost.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-foreground")}</p>
+          <p className="text-foreground/60 font-medium text-sm mt-2">Costo para reponer lo vendido</p>
         </div>
-        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-green-400/30 shadow-sm">
-          <div className="flex items-center gap-3 mb-4 text-green-600"><Wallet size={20}/><h3 className="text-[#cc679c]/80 font-bold">Caja final del día</h3></div>
-          <p className="text-3xl font-black">{monto(cajaFinalDelDia.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-green-700")}</p>
-          <p className="text-[#cc679c]/60 font-medium text-sm mt-2">
+        <div className="bg-surface rounded-xl p-6 border border-success/30 shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-success"><Wallet size={20}/><h3 className="text-foreground/80 font-bold">Caja final del día</h3></div>
+          <p className="text-3xl font-black">{monto(cajaFinalDelDia.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-success")}</p>
+          <p className="text-foreground/60 font-medium text-sm mt-2">
             {hayCajaHoy
               ? `Fondo $${fondoInicialCaja.toFixed(2)} + ventas $${efectivoVentasCaja.toFixed(2)}${extraccionesEfectivoCaja>0?` − $${extraccionesEfectivoCaja.toFixed(2)}`:""}` 
               : "Abrí la caja para ver el total"}
@@ -233,72 +233,72 @@ export function EstadisticasView() {
       </div>
 
       {/* Balance Financiero */}
-      <h2 className="text-[#5db8d1] font-bold text-2xl mb-6 mt-4">Balance Financiero</h2>
+      <h2 className="text-primary font-bold text-2xl mb-6 mt-4">Balance Financiero</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm">
-          <div className="flex items-center gap-3 mb-4 text-[#e3ac4d]"><Package size={20}/><h3 className="text-[#cc679c]/80 font-bold">Invertido en Stock</h3></div>
-          <p className="text-3xl font-black">{monto(invertidoStock.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
+        <div className="bg-surface rounded-xl p-6 border border-foreground/15 shadow-sm">
+          <div className="flex items-center gap-3 mb-4 text-primary"><Package size={20}/><h3 className="text-foreground/80 font-bold">Invertido en Stock</h3></div>
+          <p className="text-3xl font-black">{monto(invertidoStock.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-foreground")}</p>
         </div>
-        <div className="bg-[#f4f3f0] rounded-xl p-6 border border-[#e5e7eb] shadow-sm flex flex-col">
-          <div className="flex items-center gap-3 mb-4 text-[#cc679c]">
+        <div className="bg-surface rounded-xl p-6 border border-foreground/15 shadow-sm flex flex-col">
+          <div className="flex items-center gap-3 mb-4 text-foreground">
             <TrendingDown size={20}/>
-            <h3 className="text-[#cc679c]/80 font-bold">Gastos Operativos</h3>
+            <h3 className="text-foreground/80 font-bold">Gastos Operativos</h3>
           </div>
-          <p className="text-3xl font-black mb-4">{monto(totalGastosOperativos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-[#cc679c]")}</p>
-          <div className="border-t border-[#e5e7eb] pt-4 mt-auto">
-            <p className="text-xs text-[#cc679c]/70 mb-3 uppercase tracking-wider font-bold">Detalle de Gastos</p>
+          <p className="text-3xl font-black mb-4">{monto(totalGastosOperativos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-foreground")}</p>
+          <div className="border-t border-foreground/15 pt-4 mt-auto">
+            <p className="text-xs text-foreground/70 mb-3 uppercase tracking-wider font-bold">Detalle de Gastos</p>
             <div className="space-y-3 max-h-32 overflow-y-auto pr-2">
               {gastosFijos.length===0 && gastosDiariosFiltrados.length===0 && (
-                <p className="text-[#cc679c]/60 font-medium text-sm">Sin gastos en este período</p>
+                <p className="text-foreground/60 font-medium text-sm">Sin gastos en este período</p>
               )}
               {gastosFijos.map((g) => (
-                <div key={`fijo-${g.id}`} className="flex justify-between items-center text-sm p-2.5 bg-[#eceae7] rounded-lg border border-[#e5e7eb] shadow-sm">
+                <div key={`fijo-${g.id}`} className="flex justify-between items-center text-sm p-2.5 bg-background rounded-lg border border-foreground/15 shadow-sm">
                   <div className="flex items-center gap-2 truncate pr-2">
-                    <span className="shrink-0 text-[10px] font-black uppercase tracking-wide bg-[#cc679c]/10 text-[#cc679c] px-1.5 py-0.5 rounded">Fijo</span>
+                    <span className="shrink-0 text-[10px] font-black uppercase tracking-wide bg-primary/10 text-foreground px-1.5 py-0.5 rounded">Fijo</span>
                     <div className="flex flex-col truncate">
-                      <span className="text-[#cc679c] truncate font-bold">{g.name}</span>
-                      <span className="text-xs text-[#cc679c]/60 font-medium">Recurrente mensual</span>
+                      <span className="text-foreground truncate font-bold">{g.name}</span>
+                      <span className="text-xs text-foreground/60 font-medium">Recurrente mensual</span>
                     </div>
                   </div>
-                  <span className="text-[#cc679c] font-black shrink-0">-${Number(g.amount).toFixed(2)}</span>
+                  <span className="text-foreground font-black shrink-0">-${Number(g.amount).toFixed(2)}</span>
                 </div>
               ))}
               {gastosDiariosFiltrados.map((g) => (
-                <div key={`diario-${g.id}`} className="flex justify-between items-center text-sm p-2.5 bg-[#eceae7] rounded-lg border border-[#e5e7eb] shadow-sm">
+                <div key={`diario-${g.id}`} className="flex justify-between items-center text-sm p-2.5 bg-background rounded-lg border border-foreground/15 shadow-sm">
                   <div className="flex items-center gap-2 truncate pr-2">
-                    <span className="shrink-0 text-[10px] font-black uppercase tracking-wide bg-[#e3ac4d]/20 text-[#e3ac4d] px-1.5 py-0.5 rounded">Extracción</span>
+                    <span className="shrink-0 text-[10px] font-black uppercase tracking-wide bg-primary/20 text-primary px-1.5 py-0.5 rounded">Extracción</span>
                     <div className="flex flex-col truncate">
-                      <span className="text-[#cc679c] truncate font-bold">{g.reason}</span>
-                      <span className="text-xs text-[#cc679c]/60 font-medium">
+                      <span className="text-foreground truncate font-bold">{g.reason}</span>
+                      <span className="text-xs text-foreground/60 font-medium">
                         {new Date(g.createdAt.replace(" ","T")).toLocaleDateString("es-AR")} • {new Date(g.createdAt.replace(" ","T")).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",hour12:false})}
                       </span>
                     </div>
                   </div>
-                  <span className="text-[#cc679c] font-black shrink-0">-${Number(g.amount).toFixed(2)}</span>
+                  <span className="text-foreground font-black shrink-0">-${Number(g.amount).toFixed(2)}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
-        <div className={`rounded-xl p-6 border flex flex-col shadow-sm ${balanceNeto>=0?"bg-[#f4f3f0] border-green-400/30":"bg-[#f4f3f0] border-red-400/30"}`}>
-          <div className={`flex items-center gap-3 mb-2 ${balanceNeto>=0?"text-green-600":"text-[#cc679c]"}`}>
+        <div className={`rounded-xl p-6 border flex flex-col shadow-sm ${balanceNeto>=0?"bg-surface border-success/30":"bg-surface border-red-400/30"}`}>
+          <div className={`flex items-center gap-3 mb-2 ${balanceNeto>=0?"text-success":"text-foreground"}`}>
             <Wallet size={20}/><h3 className="font-bold">Balance Neto</h3>
           </div>
           <p className="text-3xl font-black">
-            <span className={balanceNeto>=0?"text-green-600":"text-[#cc679c]"}>{balanceNeto>=0?"+":"-"}${Math.abs(balanceNeto).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+            <span className={balanceNeto>=0?"text-success":"text-foreground"}>{balanceNeto>=0?"+":"-"}${Math.abs(balanceNeto).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
           </p>
-          <p className={`text-sm mt-1 mb-4 font-bold ${balanceNeto>=0?"text-green-600/70":"text-[#cc679c]/70"}`}>
+          <p className={`text-sm mt-1 mb-4 font-bold ${balanceNeto>=0?"text-success/70":"text-foreground/70"}`}>
             Rentabilidad: {margenPorcentaje.toFixed(1)}%
           </p>
-          <div className={`border-t pt-4 mt-auto space-y-2 ${balanceNeto>=0?"border-green-600/20":"border-[#cc679c]/20"}`}>
-            <p className="text-xs text-[#cc679c]/70 uppercase tracking-wider font-bold mb-1">Liquidez Disponible</p>
+          <div className={`border-t pt-4 mt-auto space-y-2 ${balanceNeto>=0?"border-success/20":"border-primary/20"}`}>
+            <p className="text-xs text-foreground/70 uppercase tracking-wider font-bold mb-1">Liquidez Disponible</p>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-[#cc679c] font-medium">En Efectivo</span>
-              <span className="text-green-600 font-bold">${disponibleEfectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+              <span className="text-foreground font-medium">En Efectivo</span>
+              <span className="text-success font-bold">${disponibleEfectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-[#cc679c] font-medium">Virtual</span>
-              <span className="text-[#5db8d1] font-bold">${disponibleVirtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
+              <span className="text-foreground font-medium">Virtual</span>
+              <span className="text-primary font-bold">${disponibleVirtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
             </div>
           </div>
         </div>
@@ -306,26 +306,26 @@ export function EstadisticasView() {
 
       {/* Movimientos */}
       <div className="mb-12">
-        <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] p-6 flex flex-col shadow-sm">
+        <div className="bg-surface rounded-xl border border-foreground/15 p-6 flex flex-col shadow-sm">
           <div className="flex items-center gap-3 mb-6">
-            <Clock className="text-[#cc679c]" size={24}/>
-            <h2 className="text-[#5db8d1] text-xl font-bold">Historial de Movimientos</h2>
+            <Clock className="text-foreground" size={24}/>
+            <h2 className="text-primary text-xl font-bold">Historial de Movimientos</h2>
           </div>
           <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-3 custom-scrollbar">
             {activityLog.length === 0 ? (
-              <p className="text-[#cc679c]/60 font-medium text-sm">No hay movimientos registrados</p>
+              <p className="text-foreground/60 font-medium text-sm">No hay movimientos registrados</p>
             ) : activityLog.map((log) => {
               const Icon = LOG_ICONS[log.icon] || Clock;
               return (
-                <div key={log.id} className="bg-[#eceae7] rounded-lg p-3 border border-[#e5e7eb] shadow-sm flex items-start gap-3">
+                <div key={log.id} className="bg-background rounded-lg p-3 border border-foreground/15 shadow-sm flex items-start gap-3">
                   <div className={`p-2 rounded-lg ${log.bg} ${log.color} shrink-0 mt-0.5`}><Icon size={16}/></div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[#cc679c] text-sm font-bold">{log.type}</p>
-                    <p className="text-[#cc679c]/70 font-medium text-xs leading-relaxed">{log.details}</p>
+                    <p className="text-foreground text-sm font-bold">{log.type}</p>
+                    <p className="text-foreground/70 font-medium text-xs leading-relaxed">{log.details}</p>
                   </div>
                   <div className="text-right shrink-0">
-                    <span className="text-[#cc679c]/80 font-bold text-xs block">{new Date(log.date.replace(" ","T")).toLocaleDateString("es-AR")}</span>
-                    <span className="text-[#cc679c]/60 font-medium text-[10px]">{new Date(log.date.replace(" ","T")).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",hour12:false})}</span>
+                    <span className="text-foreground/80 font-bold text-xs block">{new Date(log.date.replace(" ","T")).toLocaleDateString("es-AR")}</span>
+                    <span className="text-foreground/60 font-medium text-[10px]">{new Date(log.date.replace(" ","T")).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",hour12:false})}</span>
                   </div>
                 </div>
               );
@@ -335,13 +335,13 @@ export function EstadisticasView() {
       </div>
 
       {/* ── Historial por período ────────────────────────────────────────── */}
-      <h2 className="text-[#5db8d1] font-bold text-2xl mb-4">Historial por Período</h2>
-      <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] shadow-sm overflow-hidden mb-8">
+      <h2 className="text-primary font-bold text-2xl mb-4">Historial por Período</h2>
+      <div className="bg-surface rounded-xl border border-foreground/15 shadow-sm overflow-hidden mb-8">
         {/* Tabs */}
-        <div className="flex border-b border-[#e5e7eb]">
+        <div className="flex border-b border-foreground/15">
           {[{id:"mes",label:"Por mes"},{id:"semana",label:"Por semana"}].map(({id,label})=>(
             <button key={id} onClick={()=>{setHistTab(id);setExpandedHist(null);}}
-              className={`px-6 py-3 text-sm font-bold transition-all ${histTab===id?"bg-[#cc679c] text-[#eceae7]":"text-[#cc679c]/70 hover:text-[#cc679c]"}`}>
+              className={`px-6 py-3 text-sm font-bold transition-all ${histTab===id?"bg-secondary text-background":"text-foreground/70 hover:text-foreground"}`}>
               {label}
             </button>
           ))}
@@ -351,14 +351,14 @@ export function EstadisticasView() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#e5e7eb]">
-                <th className="text-left p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">
+              <tr className="border-b border-foreground/15">
+                <th className="text-left p-4 text-foreground/70 font-bold uppercase text-xs tracking-wide">
                   {histTab==="mes" ? "Mes" : "Semana"}
                 </th>
-                <th className="text-right p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">Ingresos</th>
-                <th className="text-right p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">Efectivo</th>
-                <th className="text-right p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">Virtual</th>
-                <th className="text-right p-4 text-[#cc679c]/70 font-bold uppercase text-xs tracking-wide">Cierres</th>
+                <th className="text-right p-4 text-foreground/70 font-bold uppercase text-xs tracking-wide">Ingresos</th>
+                <th className="text-right p-4 text-foreground/70 font-bold uppercase text-xs tracking-wide">Efectivo</th>
+                <th className="text-right p-4 text-foreground/70 font-bold uppercase text-xs tracking-wide">Virtual</th>
+                <th className="text-right p-4 text-foreground/70 font-bold uppercase text-xs tracking-wide">Cierres</th>
                 <th className="p-4 w-10"/>
               </tr>
             </thead>
@@ -367,45 +367,45 @@ export function EstadisticasView() {
                 <>
                   <tr key={row.key}
                     onClick={()=>setExpandedHist(expandedHist===row.key?null:row.key)}
-                    className={`border-b border-[#e5e7eb] cursor-pointer transition-colors hover:bg-[#eceae7]/60 ${expandedHist===row.key?"bg-[#eceae7]/60":""}`}>
+                    className={`border-b border-foreground/15 cursor-pointer transition-colors hover:bg-background/60 ${expandedHist===row.key?"bg-background/60":""}`}>
                     <td className="p-4">
                       <div className="flex items-center gap-2">
-                        <span className="text-[#cc679c] font-bold">{row.label}</span>
+                        <span className="text-foreground font-bold">{row.label}</span>
                         {row.isCurrent && (
-                          <span className="text-[10px] font-black bg-[#cc679c] text-[#eceae7] px-1.5 py-0.5 rounded uppercase tracking-wide">actual</span>
+                          <span className="text-[10px] font-black bg-secondary text-background px-1.5 py-0.5 rounded uppercase tracking-wide">actual</span>
                         )}
                       </div>
                     </td>
-                    <td className="p-4 text-right text-[#cc679c] font-black">${row.ingresos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                    <td className="p-4 text-right text-green-700 font-bold">${row.efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                    <td className="p-4 text-right text-[#5db8d1] font-bold">${row.virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                    <td className="p-4 text-right text-[#cc679c]/70 font-bold">{row.cajas}</td>
-                    <td className="p-4 text-center text-[#cc679c]/50">
+                    <td className="p-4 text-right text-foreground font-black">${row.ingresos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                    <td className="p-4 text-right text-success font-bold">${row.efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                    <td className="p-4 text-right text-primary font-bold">${row.virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                    <td className="p-4 text-right text-foreground/70 font-bold">{row.cajas}</td>
+                    <td className="p-4 text-center text-foreground/50">
                       {expandedHist===row.key ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
                     </td>
                   </tr>
                   {expandedHist===row.key && (
-                    <tr key={`${row.key}-detail`} className="bg-[#eceae7]/40">
+                    <tr key={`${row.key}-detail`} className="bg-background/40">
                       <td colSpan={6} className="px-6 py-4">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                          <div className="bg-[#f4f3f0] rounded-xl p-4 border border-[#e5e7eb]">
-                            <p className="text-[#cc679c]/60 text-xs font-bold uppercase mb-1">Total ingresos</p>
-                            <p className="text-[#cc679c] text-xl font-black">${row.ingresos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                          <div className="bg-surface rounded-xl p-4 border border-foreground/15">
+                            <p className="text-foreground/60 text-xs font-bold uppercase mb-1">Total ingresos</p>
+                            <p className="text-foreground text-xl font-black">${row.ingresos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
                           </div>
-                          <div className="bg-[#f4f3f0] rounded-xl p-4 border border-[#e5e7eb]">
-                            <p className="text-[#cc679c]/60 text-xs font-bold uppercase mb-1">Efectivo</p>
-                            <p className="text-green-700 text-xl font-black">${row.efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
-                            <p className="text-[#cc679c]/50 text-xs mt-1">{row.ingresos>0?((row.efectivo/row.ingresos)*100).toFixed(1):0}% del total</p>
+                          <div className="bg-surface rounded-xl p-4 border border-foreground/15">
+                            <p className="text-foreground/60 text-xs font-bold uppercase mb-1">Efectivo</p>
+                            <p className="text-success text-xl font-black">${row.efectivo.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                            <p className="text-foreground/50 text-xs mt-1">{row.ingresos>0?((row.efectivo/row.ingresos)*100).toFixed(1):0}% del total</p>
                           </div>
-                          <div className="bg-[#f4f3f0] rounded-xl p-4 border border-[#5db8d1]/20">
-                            <p className="text-[#cc679c]/60 text-xs font-bold uppercase mb-1">Virtual</p>
-                            <p className="text-[#5db8d1] text-xl font-black">${row.virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
-                            <p className="text-[#cc679c]/50 text-xs mt-1">{row.ingresos>0?((row.virtual/row.ingresos)*100).toFixed(1):0}% del total</p>
+                          <div className="bg-surface rounded-xl p-4 border border-primary/20">
+                            <p className="text-foreground/60 text-xs font-bold uppercase mb-1">Virtual</p>
+                            <p className="text-primary text-xl font-black">${row.virtual.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}</p>
+                            <p className="text-foreground/50 text-xs mt-1">{row.ingresos>0?((row.virtual/row.ingresos)*100).toFixed(1):0}% del total</p>
                           </div>
-                          <div className="bg-[#f4f3f0] rounded-xl p-4 border border-[#e5e7eb]">
-                            <p className="text-[#cc679c]/60 text-xs font-bold uppercase mb-1">Cierres de caja</p>
-                            <p className="text-[#cc679c] text-xl font-black">{row.cajas}</p>
-                            <p className="text-[#cc679c]/50 text-xs mt-1">días trabajados</p>
+                          <div className="bg-surface rounded-xl p-4 border border-foreground/15">
+                            <p className="text-foreground/60 text-xs font-bold uppercase mb-1">Cierres de caja</p>
+                            <p className="text-foreground text-xl font-black">{row.cajas}</p>
+                            <p className="text-foreground/50 text-xs mt-1">días trabajados</p>
                           </div>
                         </div>
                       </td>
@@ -414,7 +414,7 @@ export function EstadisticasView() {
                 </>
               ))}
               {(histTab==="mes" ? historicoPorMes : historicoPorSemana).length === 0 && (
-                <tr><td colSpan={6} className="p-8 text-center text-[#cc679c]/60 font-medium">No hay datos registrados aún.</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-foreground/60 font-medium">No hay datos registrados aún.</td></tr>
               )}
             </tbody>
           </table>

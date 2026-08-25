@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "kolores-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET || "yofre-secret-key";
 
 export function authenticate(req, res, next) {
   const authHeader = req.headers.authorization;

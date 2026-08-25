@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import api from "../../services/api.js";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner.js";
 import { hasPackSale, lineIdFor, packSizeOf, unitsInCartForProduct } from "../../utils/pack.js";
+import { ACCOUNT_METHOD_NAME } from "../constants.js";
 
 export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaja, role }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -147,10 +148,14 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     toast.info("Producto eliminado del carrito");
   };
 
-  const handleConfirmPayment = async (payments) => {
+  const handleConfirmPayment = async (payments, meta = {}) => {
     const finalTotal = payments.reduce((sum, p) => sum + p.finalAmount, 0);
+    const accountTotal = payments
+      .filter((p) => p.type === ACCOUNT_METHOD_NAME)
+      .reduce((sum, p) => sum + p.finalAmount, 0);
     const transaction = {
       total: finalTotal,
+      customerId: meta.customerId ?? null,
       payments: payments.map((p) => ({
         type: p.type,
         amount: p.finalAmount,
@@ -170,7 +175,11 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
 
     try {
       await onAddTransaction(transaction);
-      toast.success("Venta procesada exitosamente", { description: `Total cobrado: $${finalTotal.toFixed(2)}` });
+      toast.success("Venta procesada exitosamente", {
+        description: accountTotal > 0
+          ? `Cobrado ahora: $${(finalTotal - accountTotal).toFixed(2)} · A cuenta: $${accountTotal.toFixed(2)}`
+          : `Total cobrado: $${finalTotal.toFixed(2)}`,
+      });
       setCartItems([]);
       setShowPaymentModal(false);
       fetchProducts();
@@ -218,24 +227,24 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     <div className="flex-1 flex relative overflow-hidden">
       {loading && <Loader />}
       {!isCajaOpen && (
-        <div className="absolute inset-0 z-50 backdrop-blur-md bg-[#eceae7]/60 flex items-center justify-center p-4">
-          <div className="bg-[#f4f3f0] p-6 md:p-8 rounded-2xl border border-[#e5e7eb] text-center max-w-sm md:max-w-md shadow-2xl w-full">
+        <div className="absolute inset-0 z-50 backdrop-blur-md bg-background/60 flex items-center justify-center p-4">
+          <div className="bg-surface p-6 md:p-8 rounded-2xl border border-foreground/15 text-center max-w-sm md:max-w-md shadow-2xl w-full">
             <div className="w-14 h-14 md:w-16 md:h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
               <Lock size={28} />
             </div>
-            <h2 className="text-[#5db8d1] text-xl md:text-2xl font-bold mb-2">Caja Cerrada</h2>
+            <h2 className="text-primary text-xl md:text-2xl font-bold mb-2">Caja Cerrada</h2>
             {role === "admin" ? (
               <>
-                <p className="text-[#cc679c]/80 text-sm md:text-base mb-4">Abrí la caja para comenzar a registrar ventas.</p>
+                <p className="text-foreground/80 text-sm md:text-base mb-4">Abrí la caja para comenzar a registrar ventas.</p>
                 <button
                   onClick={() => setShowOpenModal(true)}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                  className="w-full bg-success hover:bg-foreground text-background font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                 >
                   <Unlock size={18} /> Abrir Caja
                 </button>
               </>
             ) : (
-              <p className="text-[#cc679c]/80 text-sm md:text-base">Pedile al administrador que abra la caja.</p>
+              <p className="text-foreground/80 text-sm md:text-base">Pedile al administrador que abra la caja.</p>
             )}
           </div>
         </div>
@@ -245,11 +254,11 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
       <div className="flex-1 p-4 pb-24 md:p-8 md:pb-8 overflow-y-auto">
         <div className="mb-6 md:mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 md:mb-6 gap-3">
-            <h1 className="text-[#cc679c] font-bold text-2xl md:text-4xl">Punto de Venta</h1>
+            <h1 className="text-foreground font-bold text-2xl md:text-4xl">Punto de Venta</h1>
             {isCajaOpen && (
               <button
                 onClick={() => setShowExpenseModal(true)}
-                className="bg-[#5db8d1] hover:bg-[#4a9bb8] text-white font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors text-sm md:text-base self-start sm:self-auto shadow-sm"
+                className="bg-primary hover:bg-secondary text-background font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors text-sm md:text-base self-start sm:self-auto shadow-sm"
               >
                 <Wallet size={18} />
                 Gastos / Extracción
@@ -258,19 +267,19 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
           </div>
 
           <div className="relative mb-4">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#cc679c]/60" size={20} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/60" size={20} />
             <input
               type="text"
               placeholder="Buscar o escanear código de barras..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleSearchKeyDown}
-              className="w-full bg-[#f4f3f0] text-[#cc679c] placeholder-[#cc679c]/60 rounded-xl pl-12 pr-12 py-3 md:py-4 border border-[#e5e7eb] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none transition-all font-medium"
+              className="w-full bg-surface text-foreground placeholder-foreground/60 rounded-xl pl-12 pr-12 py-3 md:py-4 border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-medium"
             />
-            <ScanBarcode className="absolute right-4 top-1/2 -translate-y-1/2 text-[#cc679c]/40" size={20} title="Pistola lectora activa" />
+            <ScanBarcode className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground/40" size={20} title="Pistola lectora activa" />
           </div>
           {isCajaOpen && (
-            <p className="text-[#cc679c]/60 text-xs font-medium mb-4 -mt-2">
+            <p className="text-foreground/60 text-xs font-medium mb-4 -mt-2">
               Escaneá un código con la pistola o ingresalo y presioná Enter para agregar al carrito.
             </p>
           )}
@@ -282,7 +291,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
                 key={category}
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 md:px-6 py-2 md:py-3 rounded-lg transition-all text-sm whitespace-nowrap shrink-0 ${
-                  selectedCategory === category ? "bg-[#cc679c] text-[#eceae7] shadow-md font-bold" : "bg-[#f4f3f0] text-[#cc679c]/80 hover:bg-[#e5e7eb] hover:text-[#cc679c] font-medium"
+                  selectedCategory === category ? "bg-secondary text-background shadow-md font-bold" : "bg-surface text-foreground/80 hover:bg-surface hover:text-foreground font-medium"
                 }`}
               >
                 {category}
@@ -293,7 +302,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
 
         <div className="flex flex-col gap-3">
           {filteredProducts.length === 0 && (
-            <p className="text-[#cc679c]/60 font-medium text-center py-12">No hay productos disponibles</p>
+            <p className="text-foreground/60 font-medium text-center py-12">No hay productos disponibles</p>
           )}
           {filteredProducts.map((product) => (
             <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
@@ -305,11 +314,11 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
       <div className="fixed bottom-20 right-4 md:hidden z-30">
         <button
           onClick={() => setShowMobileCart(true)}
-          className="bg-[#cc679c] hover:bg-[#b85889] text-[#eceae7] h-14 px-5 rounded-full flex items-center gap-2.5 shadow-xl shadow-[#cc679c]/30 transition-all active:scale-95"
+          className="bg-secondary hover:bg-foreground text-background h-14 px-5 rounded-full flex items-center gap-2.5 shadow-xl shadow-foreground/30 transition-all active:scale-95"
         >
           <ShoppingCart size={20} />
           {totalCartItems > 0 && (
-            <span className="bg-[#e3ac4d] text-[#cc679c] rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold leading-none">
+            <span className="bg-primary text-foreground rounded-full w-5 h-5 text-xs flex items-center justify-center font-bold leading-none">
               {totalCartItems}
             </span>
           )}
@@ -335,11 +344,11 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
         />
       )}
       {showPaymentModal && paymentMethods.length === 0 && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a1a] rounded-2xl w-full max-w-md border border-[#2a2a2a] p-8 text-center">
-            <p className="text-white text-xl mb-4">No hay métodos de pago configurados</p>
-            <p className="text-gray-400 mb-6">Configurá al menos un método de pago en la sección Configuración.</p>
-            <button onClick={() => setShowPaymentModal(false)} className="bg-[#6B21A8] text-white px-6 py-3 rounded-xl">Cerrar</button>
+        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl w-full max-w-md border border-foreground/15 p-8 text-center shadow-2xl">
+            <p className="text-foreground text-xl mb-4 font-bold">No hay métodos de pago configurados</p>
+            <p className="text-foreground/70 mb-6 font-medium">Configurá al menos un método de pago en la sección Configuración.</p>
+            <button onClick={() => setShowPaymentModal(false)} className="bg-secondary hover:bg-foreground text-background px-6 py-3 rounded-xl font-bold">Cerrar</button>
           </div>
         </div>
       )}
@@ -352,34 +361,34 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
       )}
 
       {showOpenModal && (
-        <div className="fixed inset-0 bg-[#cc679c]/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-[#eceae7] rounded-2xl w-full max-w-md border border-[#f4f3f0] shadow-2xl">
-            <div className="p-6 border-b border-[#f4f3f0] flex items-center justify-between">
-              <h2 className="text-[#5db8d1] font-bold text-2xl flex items-center gap-2">
-                <Unlock size={24} className="text-green-600" /> Abrir Caja
+        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+          <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
+            <div className="p-6 border-b border-surface flex items-center justify-between">
+              <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
+                <Unlock size={24} className="text-success" /> Abrir Caja
               </h2>
-              <button onClick={() => setShowOpenModal(false)} className="text-[#cc679c]/50 hover:text-[#cc679c] transition-colors">
+              <button onClick={() => setShowOpenModal(false)} className="text-foreground/50 hover:text-foreground transition-colors">
                 <X size={22} />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <label className="text-[#cc679c]/80 font-medium text-sm block">Monto inicial en caja (Cambio)</label>
+              <label className="text-foreground/80 font-medium text-sm block">Monto inicial en caja (Cambio)</label>
               <input
                 type="number"
                 value={openingAmount}
                 onChange={(e) => setOpeningAmount(e.target.value)}
                 onFocus={(e) => e.target.select()}
-                className="w-full bg-white text-[#cc679c] rounded-xl px-4 py-4 border border-[#f4f3f0] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none font-bold shadow-sm transition-all"
+                className="w-full bg-surface text-foreground rounded-xl px-4 py-4 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none font-bold shadow-sm transition-all"
                 placeholder="0.00"
                 step="0.01"
                 min="0"
               />
             </div>
-            <div className="p-6 border-t border-[#f4f3f0] flex gap-4">
-              <button onClick={() => setShowOpenModal(false)} className="flex-1 bg-[#f4f3f0] hover:bg-[#e5e7eb] text-[#cc679c] font-bold py-4 rounded-xl transition-all shadow-sm">
+            <div className="p-6 border-t border-surface flex gap-4">
+              <button onClick={() => setShowOpenModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">
                 Cancelar
               </button>
-              <button onClick={handleConfirmOpen} disabled={openingCaja} className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold py-4 rounded-xl transition-all shadow-md">
+              <button onClick={handleConfirmOpen} disabled={openingCaja} className="flex-1 bg-success hover:bg-foreground disabled:bg-success/40 text-background font-bold py-4 rounded-xl transition-all shadow-md">
                 {openingCaja ? "Abriendo..." : "Confirmar Apertura"}
               </button>
             </div>

@@ -15,6 +15,7 @@ import statsRoutes from "./routes/stats.routes.js";
 import internalWithdrawalRoutes from "./routes/internalWithdrawal.routes.js";
 import subscriptionRoutes from "./routes/subscription.routes.js";
 import priceGroupRoutes from "./routes/priceGroup.routes.js";
+import customerRoutes from "./routes/customer.routes.js";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,11 +30,20 @@ const allowedOrigins = [
     .filter(Boolean),
 ];
 
+function isLocalDevOrigin(origin) {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "localhost" || hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 const corsOptions = {
   origin(origin, callback) {
     if (!origin) return callback(null, true);
     const normalized = origin.replace(/\/$/, "");
-    if (allowedOrigins.includes(normalized)) {
+    if (allowedOrigins.includes(normalized) || isLocalDevOrigin(normalized)) {
       callback(null, true);
     } else {
       console.warn(`CORS bloqueado: ${origin}. Permitidos: ${allowedOrigins.join(", ")}`);
@@ -65,6 +75,7 @@ app.use("/api/stats", statsRoutes);
 app.use("/api/internal-withdrawals", internalWithdrawalRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/price-groups", priceGroupRoutes);
+app.use("/api/customers", customerRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 

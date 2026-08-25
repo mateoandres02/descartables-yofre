@@ -9,11 +9,20 @@ import { InicioView } from "./components/InicioView.jsx";
 import { ConfiguracionView } from "./components/ConfiguracionView.jsx";
 import { EstadisticasView } from "./components/EstadisticasView.jsx";
 import { UsuariosView } from "./components/UsuariosView.jsx";
+import { CuentasCorrientesView } from "./components/CuentasCorrientesView.jsx";
 import { CreadorView } from "./components/CreadorView.jsx";
 import { Loader } from "./components/Loader.jsx";
 import { SubscriptionProvider } from "./modules/subscription/SubscriptionContext.jsx";
 import { SubscriptionOverlay } from "./modules/subscription/SubscriptionOverlay.jsx";
 import api from "../services/api.js";
+
+const toastOptions = {
+  style: {
+    background: "var(--color-surface)",
+    color: "var(--color-foreground)",
+    border: "1px solid color-mix(in srgb, var(--color-foreground) 15%, transparent)",
+  },
+};
 
 export default function App() {
   const [activeView, setActiveView] = useState("ventas");
@@ -92,6 +101,7 @@ export default function App() {
   async function handleAddTransaction(transaction) {
     const payload = {
       total: transaction.total,
+      customerId: transaction.customerId ?? null,
       payments: transaction.payments,
       items: transaction.items,
     };
@@ -128,12 +138,17 @@ export default function App() {
   }
 
   if (!user) {
-    return <LoginView onLogin={handleLogin} />;
+    return (
+      <>
+        <LoginView onLogin={handleLogin} />
+        <Toaster position="top-right" toastOptions={toastOptions} />
+      </>
+    );
   }
 
   return (
     <SubscriptionProvider>
-      <div className="size-full flex bg-[#eceae7] text-[#cc679c] relative overflow-x-hidden" style={{ minHeight: "100vh" }}>
+      <div className="size-full flex bg-background text-foreground relative overflow-x-hidden min-h-screen">
         {appLoading && <Loader fullScreen />}
         <Sidebar
           activeView={activeView}
@@ -173,12 +188,13 @@ export default function App() {
             onRefresh={fetchCajaStatus}
           />
         )}
+        {activeView === "cuentas" && user.role !== "creador" && <CuentasCorrientesView />}
         {activeView === "estadisticas" && user.role === "admin" && <EstadisticasView />}
         {activeView === "usuarios" && user.role === "admin" && <UsuariosView />}
         {activeView === "configuracion" && user.role === "admin" && <ConfiguracionView />}
 
         <SubscriptionOverlay userRole={user.role} onLogout={handleLogout} />
-        <Toaster position="top-right" />
+        <Toaster position="top-right" toastOptions={toastOptions} />
       </div>
     </SubscriptionProvider>
   );

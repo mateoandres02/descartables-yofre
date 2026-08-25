@@ -15,6 +15,8 @@ import { TransactionModel } from "../models/transaction.model.js";
 import { DailyExpenseModel } from "../models/dailyExpense.model.js";
 import { StockModificationModel } from "../models/stockModification.model.js";
 import { ProductModel } from "../models/product.model.js";
+import { AccountMovementModel } from "../models/accountMovement.model.js";
+import { CustomerModel } from "../models/customer.model.js";
 import { getArgentinaTime } from "../db/timeUtils.js";
 
 export const StatsService = {
@@ -139,6 +141,30 @@ export const StatsService = {
         color: "text-yellow-600",
         bg: "bg-yellow-50",
       });
+    }
+
+    // Movimientos de cuenta corriente
+    const accountMovementList = await AccountMovementModel.findAll();
+    if (accountMovementList.length > 0) {
+      const customerList = await CustomerModel.findAll();
+      const customerById = new Map(customerList.map((c) => [c.id, c]));
+
+      for (const movement of accountMovementList) {
+        const customer = customerById.get(movement.customerId);
+        const who = customer ? `${customer.name} ${customer.lastName}` : "Cliente";
+        const isCharge = movement.type === "cargo";
+        logs.push({
+          id: `account-${movement.id}`,
+          type: isCharge ? "Cargo a cuenta" : "Cobro de cuenta",
+          details: isCharge
+            ? `${who} — $${Number(movement.amount).toFixed(2)} fiado`
+            : `${who} — $${Number(movement.amount).toFixed(2)} en ${movement.methodName}`,
+          date: movement.createdAt,
+          icon: isCharge ? "BookUp" : "Wallet",
+          color: isCharge ? "text-orange-500" : "text-green-600",
+          bg: isCharge ? "bg-orange-50" : "bg-green-50",
+        });
+      }
     }
 
     // Ordenar por fecha descendente (formato YYYY-MM-DD HH:MM:SS es ordenable como string)

@@ -42,8 +42,8 @@ export function CreadorView() {
   const statusColor = isExpired
     ? "text-red-600 bg-red-500/10"
     : isWarningPhase
-    ? "text-[#e3ac4d] bg-[#e3ac4d]/10"
-    : "text-green-600 bg-green-500/10";
+    ? "text-primary bg-primary/10"
+    : "text-success bg-success/10";
 
   const statusLabel = isExpired ? "Bloqueado" : isWarningPhase ? "Por vencer" : "Activo";
   const StatusIcon = isExpired ? XCircle : isWarningPhase ? AlertTriangle : CheckCircle;
@@ -52,46 +52,46 @@ export function CreadorView() {
     <div className="flex-1 p-4 pb-20 md:p-8 overflow-y-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <div className="w-12 h-12 bg-[#cc679c]/10 rounded-xl flex items-center justify-center">
-          <ShieldCheck className="text-[#cc679c]" size={28} />
+        <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center">
+          <ShieldCheck className="text-foreground" size={28} />
         </div>
         <div>
-          <h1 className="text-[#cc679c] font-bold text-2xl md:text-4xl">Panel de Creador</h1>
-          <p className="text-[#cc679c]/70 font-medium text-sm">Gestión de suscripción del cliente</p>
+          <h1 className="text-foreground font-bold text-2xl md:text-4xl">Panel de Creador</h1>
+          <p className="text-foreground/70 font-medium text-sm">Gestión de suscripción del cliente</p>
         </div>
       </div>
 
       <div className="max-w-2xl space-y-6">
 
         {/* Estado actual */}
-        <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-[#e5e7eb] flex items-center gap-3">
-            <Settings size={20} className="text-[#5db8d1]" />
-            <h2 className="text-[#5db8d1] font-bold text-lg">Estado Actual</h2>
+        <div className="bg-surface rounded-xl border border-foreground/15 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-foreground/15 flex items-center gap-3">
+            <Settings size={20} className="text-primary" />
+            <h2 className="text-primary font-bold text-lg">Estado Actual</h2>
           </div>
           <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-[#eceae7] rounded-lg p-4 border border-[#e5e7eb]">
-              <p className="text-[#cc679c]/60 font-medium text-xs uppercase tracking-wider mb-1">Día de corte</p>
-              <p className="text-[#cc679c] font-bold text-lg">
+            <div className="bg-background rounded-lg p-4 border border-foreground/15">
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wider mb-1">Día de corte</p>
+              <p className="text-foreground font-bold text-lg">
                 {cutoffDay ? `Día ${cutoffDay}` : "Sin configurar"}
               </p>
             </div>
-            <div className="bg-[#eceae7] rounded-lg p-4 border border-[#e5e7eb]">
-              <p className="text-[#cc679c]/60 font-medium text-xs uppercase tracking-wider mb-1">Último pago</p>
-              <p className="text-[#cc679c] font-bold text-base">
+            <div className="bg-background rounded-lg p-4 border border-foreground/15">
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wider mb-1">Último pago</p>
+              <p className="text-foreground font-bold text-base">
                 {lastPaidAt
                   ? new Date(lastPaidAt + "T12:00:00").toLocaleDateString("es-AR", { day: "numeric", month: "long" })
                   : "Sin registrar"}
               </p>
             </div>
-            <div className="bg-[#eceae7] rounded-lg p-4 border border-[#e5e7eb]">
-              <p className="text-[#cc679c]/60 font-medium text-xs uppercase tracking-wider mb-1">Fase de aviso</p>
-              <p className={`font-bold text-lg ${isWarningPhase ? "text-[#e3ac4d]" : "text-[#cc679c]/50"}`}>
+            <div className="bg-background rounded-lg p-4 border border-foreground/15">
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wider mb-1">Fase de aviso</p>
+              <p className={`font-bold text-lg ${isWarningPhase ? "text-primary" : "text-foreground/50"}`}>
                 {isWarningPhase ? "Activa" : "Inactiva"}
               </p>
             </div>
-            <div className="bg-[#eceae7] rounded-lg p-4 border border-[#e5e7eb]">
-              <p className="text-[#cc679c]/60 font-medium text-xs uppercase tracking-wider mb-1">Restricción</p>
+            <div className="bg-background rounded-lg p-4 border border-foreground/15">
+              <p className="text-foreground/60 font-medium text-xs uppercase tracking-wider mb-1">Restricción</p>
               <div className={`inline-flex items-center gap-1.5 font-bold text-lg ${statusColor} px-2 py-0.5 rounded-lg`}>
                 <StatusIcon size={16} />
                 {statusLabel}
@@ -100,7 +100,7 @@ export function CreadorView() {
           </div>
           {cutoffDay && isWarningPhase && !isExpired && (
             <div className="px-5 pb-5">
-              <div className="bg-[#e3ac4d]/10 border border-[#e3ac4d]/30 rounded-lg p-3 text-sm text-[#cc679c] font-medium">
+              <div className="bg-primary/10 border border-primary/30 rounded-lg p-3 text-sm text-foreground font-medium">
                 ⚠️ Quedan <span className="font-bold">{daysRemaining} día{daysRemaining !== 1 ? "s" : ""}</span> para el corte. Los usuarios ya están viendo el aviso de vencimiento.
               </div>
             </div>
@@ -115,18 +115,18 @@ export function CreadorView() {
         </div>
 
         {/* Configurar día de corte */}
-        <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-[#e5e7eb] flex items-center gap-3">
-            <Calendar size={20} className="text-[#5db8d1]" />
-            <h2 className="text-[#5db8d1] font-bold text-lg">Configurar Día de Corte</h2>
+        <div className="bg-surface rounded-xl border border-foreground/15 shadow-sm overflow-hidden">
+          <div className="p-5 border-b border-foreground/15 flex items-center gap-3">
+            <Calendar size={20} className="text-primary" />
+            <h2 className="text-primary font-bold text-lg">Configurar Día de Corte</h2>
           </div>
           <div className="p-5 space-y-4">
-            <p className="text-[#cc679c]/70 font-medium text-sm">
+            <p className="text-foreground/70 font-medium text-sm">
               Se configura <span className="font-bold">una sola vez</span>. Cada mes, al superar este día, el sistema bloqueará automáticamente el acceso hasta que presiones "Reactivar". Los avisos de vencimiento aparecen 5 días antes del corte.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
-                <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#cc679c]/50" />
+                <Calendar size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/50" />
                 <input
                   type="number"
                   min="1"
@@ -134,13 +134,13 @@ export function CreadorView() {
                   placeholder="Ej: 20"
                   value={selectedDay}
                   onChange={(e) => setSelectedDay(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-[#eceae7] text-[#cc679c] font-bold rounded-xl border border-[#e5e7eb] focus:border-[#cc679c] focus:ring-2 focus:ring-[#cc679c]/20 outline-none transition-all"
+                  className="w-full pl-11 pr-4 py-3 bg-background text-foreground font-bold rounded-xl border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                 />
               </div>
               <button
                 onClick={handleSaveCutoff}
                 disabled={saving || !selectedDay}
-                className="flex items-center justify-center gap-2 bg-[#cc679c] hover:bg-[#b85889] disabled:bg-[#eceae7] disabled:text-[#cc679c]/40 text-[#eceae7] font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-[#cc679c]/20 disabled:shadow-none"
+                className="flex items-center justify-center gap-2 bg-secondary hover:bg-foreground disabled:bg-background disabled:text-foreground/40 text-background font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-secondary/20 disabled:shadow-none"
               >
                 <Play size={18} />
                 {saving ? "Guardando..." : "Guardar día"}
@@ -151,23 +151,23 @@ export function CreadorView() {
 
         {/* Reactivar suscripción */}
         {cutoffDay && (
-          <div className="bg-[#f4f3f0] rounded-xl border border-[#e5e7eb] shadow-sm overflow-hidden">
-            <div className="p-5 border-b border-[#e5e7eb] flex items-center gap-3">
-              <RotateCcw size={20} className="text-green-600" />
-              <h2 className="text-green-700 font-bold text-lg">Reactivar Suscripción</h2>
+          <div className="bg-surface rounded-xl border border-foreground/15 shadow-sm overflow-hidden">
+            <div className="p-5 border-b border-foreground/15 flex items-center gap-3">
+              <RotateCcw size={20} className="text-success" />
+              <h2 className="text-success font-bold text-lg">Reactivar Suscripción</h2>
             </div>
             <div className="p-5">
-              <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="bg-success/10 border border-success/30 rounded-xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                  <p className="text-[#cc679c] font-bold mb-1">Levantar el bloqueo manualmente</p>
-                  <p className="text-[#cc679c]/70 font-medium text-sm">
+                  <p className="text-foreground font-bold mb-1">Levantar el bloqueo manualmente</p>
+                  <p className="text-foreground/70 font-medium text-sm">
                     Usá este botón una vez que el cliente haya pagado. El sistema registra la fecha de pago del mes actual y el acceso vuelve a la normalidad. El día de corte se mantiene para el mes siguiente de forma automática.
                   </p>
                 </div>
                 <button
                   onClick={handleReactivate}
                   disabled={reactivating}
-                  className="shrink-0 flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold px-5 py-3 rounded-xl transition-all shadow-md"
+                  className="shrink-0 flex items-center gap-2 bg-success hover:bg-foreground disabled:bg-success/40 text-background font-bold px-5 py-3 rounded-xl transition-all shadow-md"
                 >
                   <RotateCcw size={18} />
                   {reactivating ? "Reactivando..." : "Reactivar"}
