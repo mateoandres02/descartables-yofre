@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Search, Plus, Edit2, Trash2, AlertTriangle, X, Package, BookOpen, Notebook, PenSquare, BookCopy, ScanBarcode } from "lucide-react";
 import { Loader } from "./Loader.jsx";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner.js";
-import { formatStock, hasPackSale } from "../../utils/pack.js";
+import { formatStock, hasPackSale, packTypeLabel } from "../../utils/pack.js";
+import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
 
 const ICON_OPTIONS = [
   { key: "BookOpen",  Icon: BookOpen,  label: "Libro"          },
@@ -14,7 +15,7 @@ const ICON_OPTIONS = [
   { key: "Package", Icon: Package, label: "Genérico"       },
 ];
 
-const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package", unitsPerPack: "", packPrice: "" };
+const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package", unitsPerPack: "", packPrice: "", packTypeId: null, priceTiers: [] };
 
 function toModalItem(product) {
   return {
@@ -26,8 +27,10 @@ function toModalItem(product) {
     minStock: String(product.minStock),
     icon: product.icon || "Package",
     priceGroupId: product.priceGroupId ?? null,
+    packTypeId: product.packTypeId ?? null,
     unitsPerPack: Number(product.unitsPerPack) > 1 ? String(product.unitsPerPack) : "",
     packPrice: product.packPrice != null && product.packPrice !== "" ? String(product.packPrice) : "",
+    priceTiers: (product.priceTiers || []).map((t) => ({ quantity: String(t.quantity), price: String(t.price) })),
   };
 }
 
@@ -44,65 +47,101 @@ export function InventarioView() {
   const [showAllLowStock, setShowAllLowStock] = useState(false);
   const [brands, setBrands] = useState([]);
   const [collections, setCollections] = useState([]);
+  const [packTypes, setPackTypes] = useState([]);
   const [groupFilter, setGroupFilter] = useState("todos");
   const [selectedIds, setSelectedIds] = useState([]);
   const [assignModal, setAssignModal] = useState(null);
+  const [page, setPage] = useState(1);
 
   async function fetchData() {
     try {
-      const [pRes, cRes, bRes, colRes] = await Promise.all([
+      const [pRes, cRes, bRes, colRes, packRes] = await Promise.all([
         api.get("/products"),
         api.get("/categories"),
-        api.get("/price-groups", { params: { type: "marca" } }),
+        api.get("/price-groups", { params: { type: "proveedor" } }),
         api.get("/price-groups", { params: { type: "coleccion" } }),
+        api.get("/pack-types"),
       ]);
       setInventory(pRes.data);
       setCategories(cRes.data);
       setBrands(bRes.data);
       setCollections(colRes.data);
+      setPackTypes(packRes.data);
     } catch { toast.error("Error al cargar datos"); }
     finally { setLoading(false); }
   }
 
   useEffect(() => { fetchData(); }, []);
 
-  const filteredInventory = inventory
-    .filter((p) => {
-      const term = searchTerm.toLowerCase();
-      const matchesSearch =
-        (p.name || "").toLowerCase().includes(term) ||
-        (p.category || "").toLowerCase().includes(term) ||
-        (p.codbarra && String(p.codbarra).includes(searchTerm.trim())) ||
-        (p.priceGroupName || "").toLowerCase().includes(term);
-      const matchesCategory = selectedCategory === "Todos" || p.category === selectedCategory;
-      const matchesGroup =
-        groupFilter === "todos" ||
-        (groupFilter === "sin-grupo" && !p.priceGroupId) ||
-        (groupFilter === "marcas" && p.priceGroupType === "marca") ||
-        (groupFilter === "colecciones" && p.priceGroupType === "coleccion") ||
-        String(p.priceGroupId) === String(groupFilter);
-      return matchesSearch && matchesCategory && matchesGroup;
-    })
-    .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" }));
-  const lowStockItems = inventory.filter((p) => p.stock <= p.minStock);
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => byNameEs(a.name, b.name)),
+    [categories]
+  );
+  const sortedBrands = useMemo(
+    () => [...brands].sort((a, b) => byNameEs(a.name, b.name)),
+    [brands]
+  );
+  const sortedCollections = useMemo(
+    () => [...collections].sort((a, b) => byNameEs(a.name, b.name)),
+    [collections]
+  );
+
+  const filteredInventory = useMemo(() => {
+    const term = searchTerm.toLowerCase();
+    const code = searchTerm.trim();
+    return inventory
+      .filter((p) => {
+        const matchesSearch =
+          (p.name || "").toLowerCase().includes(term) ||
+          (p.category || "").toLowerCase().includes(term) ||
+          (p.codbarra && String(p.codbarra).includes(code)) ||
+          (p.priceGroupName || "").toLowerCase().includes(term);
+        const matchesCategory = selectedCategory === "Todos" || p.category === selectedCategory;
+        const matchesGroup =
+          groupFilter === "todos" ||
+          (groupFilter === "sin-grupo" && !p.priceGroupId) ||
+          (groupFilter === "proveedores" && p.priceGroupType === "proveedor") ||
+          (groupFilter === "colecciones" && p.priceGroupType === "coleccion") ||
+          String(p.priceGroupId) === String(groupFilter);
+        return matchesSearch && matchesCategory && matchesGroup;
+      })
+      .sort((a, b) => byNameEs(a.name, b.name));
+  }, [inventory, searchTerm, selectedCategory, groupFilter]);
+
+  useEffect(() => { setPage(1); }, [searchTerm, selectedCategory, groupFilter]);
+
+  const paged = paginate(filteredInventory, page);
+  const lowStockItems = useMemo(
+    () => inventory.filter((p) => p.stock <= p.minStock).sort((a, b) => byNameEs(a.name, b.name)),
+    [inventory]
+  );
 
   const handleAddProduct = () => {
     setProductModal({
       isOpen: true,
-      item: { ...EMPTY_PRODUCT, categoryId: categories[0]?.id ?? null },
+      item: { ...EMPTY_PRODUCT, categoryId: sortedCategories[0]?.id ?? null },
       isNew: true,
     });
   };
 
+  const inventoryByBarcode = useMemo(() => {
+    const map = new Map();
+    for (const p of inventory) {
+      const code = p.codbarra && String(p.codbarra);
+      if (code && !map.has(code)) map.set(code, p);
+    }
+    return map;
+  }, [inventory]);
+
   const openNewProductWithBarcode = useCallback((code) => {
     setProductModal({
       isOpen: true,
-      item: { ...EMPTY_PRODUCT, codbarra: code, categoryId: categories[0]?.id ?? null },
+      item: { ...EMPTY_PRODUCT, codbarra: code, categoryId: sortedCategories[0]?.id ?? null },
       isNew: true,
     });
     setSearchTerm("");
     toast.info("Código no registrado", { description: "Completá los datos del nuevo producto" });
-  }, [categories]);
+  }, [sortedCategories]);
 
   const openEditProduct = useCallback((product) => {
     setProductModal({ isOpen: true, item: toModalItem(product), isNew: false });
@@ -111,8 +150,8 @@ export function InventarioView() {
   }, []);
 
   const findProductByBarcode = useCallback((code) => {
-    return inventory.find((p) => p.codbarra && String(p.codbarra) === String(code));
-  }, [inventory]);
+    return inventoryByBarcode.get(String(code));
+  }, [inventoryByBarcode]);
 
   const handleBarcodeScan = useCallback((code) => {
     const product = findProductByBarcode(code);
@@ -173,10 +212,14 @@ export function InventarioView() {
         stock: parseInt(productModal.item.stock, 10) || 0,
         minStock: parseInt(productModal.item.minStock, 10) || 0,
         priceGroupId: productModal.item.priceGroupId || null,
+        packTypeId: productModal.item.packTypeId || null,
         unitsPerPack: parseInt(productModal.item.unitsPerPack, 10) || 1,
         packPrice: productModal.item.packPrice === "" || productModal.item.packPrice == null
           ? null
           : parseFloat(productModal.item.packPrice),
+        priceTiers: (productModal.item.priceTiers || [])
+          .map((t) => ({ quantity: parseInt(t.quantity, 10), price: parseFloat(t.price) }))
+          .filter((t) => t.quantity >= 2 && Number.isFinite(t.price) && t.price >= 0),
       };
 
       const originalProduct = inventory.find(p => p.id === productModal.item.id);
@@ -212,14 +255,14 @@ export function InventarioView() {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const allVisibleSelected = filteredInventory.length > 0 && filteredInventory.every((p) => selectedIds.includes(p.id));
+  const allVisibleSelected = paged.slice.length > 0 && paged.slice.every((p) => selectedIds.includes(p.id));
 
   const toggleSelectAllVisible = () => {
     if (allVisibleSelected) {
-      const visible = new Set(filteredInventory.map((p) => p.id));
+      const visible = new Set(paged.slice.map((p) => p.id));
       setSelectedIds((prev) => prev.filter((id) => !visible.has(id)));
     } else {
-      setSelectedIds((prev) => [...new Set([...prev, ...filteredInventory.map((p) => p.id)])]);
+      setSelectedIds((prev) => [...new Set([...prev, ...paged.slice.map((p) => p.id)])]);
     }
   };
 
@@ -246,8 +289,7 @@ export function InventarioView() {
     ? Number(productModal.item.priceGroupId)
     : "";
 
-  const categoryNames = categories.map((c) => c.name);
-  const allCategories = categoryNames.length > 0 ? categoryNames : ["Libros", "Cuadernos", "Útiles"];
+  const categoryNames = sortedCategories.map((c) => c.name);
 
 
   return (
@@ -265,9 +307,9 @@ export function InventarioView() {
             <div className="flex-1">
               <h3 className="text-foreground font-bold mb-2">Alerta de Stock Bajo</h3>
               <p className="text-foreground/80 font-medium text-sm mb-3">{lowStockItems.length} productos en su límite mínimo o por debajo.</p>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
                 {(showAllLowStock ? lowStockItems : lowStockItems.slice(0, 5)).map((item) => (
-                  <span key={item.id} className="bg-primary text-background font-bold px-3 py-1 rounded-full text-sm shadow-sm">
+                  <span key={item.id} className="bg-primary text-foreground font-bold px-3 py-1 rounded-full text-sm shadow-sm">
                     {item.name}: {item.stock} unidades
                   </span>
                 ))}
@@ -298,58 +340,62 @@ export function InventarioView() {
           />
           <ScanBarcode className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground/40" size={20} title="Escaneá para abrir edición" />
         </div>
-        <button onClick={handleAddProduct} className="bg-secondary hover:bg-foreground text-background font-bold px-5 py-3 md:py-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm md:text-base shrink-0 shadow-md shadow-secondary/20">
+        <button onClick={handleAddProduct} className="bg-secondary hover:brightness-125 text-foreground font-bold px-5 py-3 md:py-4 rounded-xl flex items-center justify-center gap-2 transition-all text-sm md:text-base shrink-0 shadow-md shadow-secondary/20">
           <Plus size={20} /> Nuevo Producto
         </button>
       </div>
 
-      <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-0 md:flex-wrap mb-3 scrollbar-hide">
-        {["Todos", ...allCategories].map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-4 md:px-5 py-2 rounded-lg text-sm transition-all whitespace-nowrap shrink-0 shadow-sm ${
-              selectedCategory === cat
-                ? "bg-secondary text-background font-bold"
-                : "bg-surface text-foreground/80 font-medium hover:bg-surface hover:text-foreground"
-            }`}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+        <div>
+          <label className="text-foreground/80 font-bold text-sm block mb-2">Categoría</label>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
           >
-            {cat}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 md:flex-wrap mb-6 scrollbar-hide">
-        {[
-          { id: "todos", label: "Todos los grupos" },
-          { id: "sin-grupo", label: "Sin marca/colección" },
-          { id: "marcas", label: "Solo marcas" },
-          { id: "colecciones", label: "Solo colecciones" },
-          ...brands.map((b) => ({ id: String(b.id), label: b.name })),
-          ...collections.map((c) => ({ id: String(c.id), label: c.name })),
-        ].map((opt) => (
-          <button
-            key={opt.id}
-            onClick={() => setGroupFilter(opt.id)}
-            className={`px-3 py-1.5 rounded-lg text-xs transition-all whitespace-nowrap shrink-0 ${
-              groupFilter === opt.id
-                ? "bg-primary text-background font-bold"
-                : "bg-surface text-foreground/80 font-medium hover:bg-surface"
-            }`}
+            <option value="Todos">Todas las categorías</option>
+            {categoryNames.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="text-foreground/80 font-bold text-sm block mb-2">Proveedor / Colección</label>
+          <select
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
           >
-            {opt.label}
-          </button>
-        ))}
+            <option value="todos">Todos los grupos</option>
+            <option value="sin-grupo">Sin proveedor/colección</option>
+            <option value="proveedores">Solo proveedores</option>
+            <option value="colecciones">Solo colecciones</option>
+            {sortedBrands.length > 0 && (
+              <optgroup label="Proveedores">
+                {sortedBrands.map((b) => (
+                  <option key={b.id} value={String(b.id)}>{b.name}</option>
+                ))}
+              </optgroup>
+            )}
+            {sortedCollections.length > 0 && (
+              <optgroup label="Colecciones">
+                {sortedCollections.map((c) => (
+                  <option key={c.id} value={String(c.id)}>{c.name}</option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+        </div>
       </div>
 
       {selectedIds.length > 0 && (
-        <div className="mb-4 bg-secondary text-background rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 shadow-md">
+        <div className="mb-4 bg-secondary text-foreground rounded-xl px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 shadow-md">
           <span className="font-bold text-sm flex-1">{selectedIds.length} productos seleccionados</span>
           <div className="flex flex-wrap gap-2">
-            <button onClick={() => setAssignModal("marca")} className="bg-background/15 hover:bg-background/25 font-bold text-xs px-3 py-2 rounded-lg">Asignar marca</button>
-            <button onClick={() => setAssignModal("coleccion")} className="bg-background/15 hover:bg-background/25 font-bold text-xs px-3 py-2 rounded-lg">Asignar colección</button>
-            <button onClick={() => handleBulkAssign(null)} className="bg-background/15 hover:bg-background/25 font-bold text-xs px-3 py-2 rounded-lg">Quitar grupo</button>
-            <button onClick={() => setSelectedIds([])} className="bg-background/15 hover:bg-background/25 font-bold text-xs px-3 py-2 rounded-lg">Cancelar</button>
+            <button onClick={() => setAssignModal("proveedor")} className="bg-foreground/15 hover:bg-foreground/25 font-bold text-xs px-3 py-2 rounded-lg">Asignar proveedor</button>
+            <button onClick={() => setAssignModal("coleccion")} className="bg-foreground/15 hover:bg-foreground/25 font-bold text-xs px-3 py-2 rounded-lg">Asignar colección</button>
+            <button onClick={() => handleBulkAssign(null)} className="bg-foreground/15 hover:bg-foreground/25 font-bold text-xs px-3 py-2 rounded-lg">Quitar grupo</button>
+            <button onClick={() => setSelectedIds([])} className="bg-foreground/15 hover:bg-foreground/25 font-bold text-xs px-3 py-2 rounded-lg">Cancelar</button>
           </div>
         </div>
       )}
@@ -366,7 +412,7 @@ export function InventarioView() {
                 <th className="text-center text-foreground/80 font-bold p-4 whitespace-nowrap">Acciones</th>
                 <th className="text-left text-foreground/80 font-bold p-4 whitespace-nowrap">Cód. Barras</th>
                 <th className="text-left text-foreground/80 font-bold p-4">Categoría</th>
-                <th className="text-left text-foreground/80 font-bold p-4 whitespace-nowrap">Marca / Colección</th>
+                <th className="text-left text-foreground/80 font-bold p-4 whitespace-nowrap">Proveedor / Colección</th>
                 <th className="text-left text-foreground/80 font-bold p-4">Costo</th>
                 <th className="text-left text-foreground/80 font-bold p-4">Precio</th>
                 <th className="text-left text-foreground/80 font-bold p-4">Stock</th>
@@ -375,7 +421,14 @@ export function InventarioView() {
               </tr>
             </thead>
             <tbody>
-              {filteredInventory.map((product) => {
+              {paged.slice.length === 0 && (
+                <tr>
+                  <td colSpan={11} className="p-8 text-center text-foreground/60 font-medium">
+                    No hay productos para mostrar
+                  </td>
+                </tr>
+              )}
+              {paged.slice.map((product) => {
                 const noStock = product.stock === 0;
                 const lowStock = !noStock && product.stock <= product.minStock;
                 return (
@@ -410,7 +463,7 @@ export function InventarioView() {
                     <td className="p-4 max-w-[140px]"><span className="text-foreground/80 font-medium block truncate">{product.category}</span></td>
                     <td className="p-4 whitespace-nowrap">
                       {product.priceGroupName
-                        ? <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${product.priceGroupType === "marca" ? "bg-primary/15 text-foreground" : "bg-primary/15 text-primary"}`}>{product.priceGroupName}</span>
+                        ? <span className={`inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold ${product.priceGroupType === "proveedor" ? "bg-primary/15 text-foreground" : "bg-primary/15 text-primary"}`}>{product.priceGroupName}</span>
                         : <span className="text-foreground/40 font-medium text-sm">Sin grupo</span>}
                     </td>
                     <td className="p-4 whitespace-nowrap">
@@ -419,11 +472,16 @@ export function InventarioView() {
                     <td className="p-4 whitespace-nowrap">
                       <span className="text-foreground font-black block">${Number(product.price).toFixed(2)}</span>
                       {hasPackSale(product) && (
-                        <span className="text-foreground/60 font-medium text-xs">paq. x{product.unitsPerPack} ${Number(product.packPrice).toFixed(2)}</span>
+                        <span className="text-foreground/60 font-medium text-xs">{packTypeLabel(product)} x{product.unitsPerPack} ${Number(product.packPrice).toFixed(2)}</span>
+                      )}
+                      {Array.isArray(product.priceTiers) && product.priceTiers.length > 0 && (
+                        <span className="text-foreground/50 font-medium text-[11px] block">
+                          {product.priceTiers.map((t) => `x${t.quantity}`).join(" · ")}
+                        </span>
                       )}
                     </td>
                     <td className="p-4 whitespace-nowrap">
-                      <span className="text-foreground font-bold">{formatStock(product.stock, product.unitsPerPack)}</span>
+                      <span className="text-foreground font-bold">{formatStock(product.stock, product.unitsPerPack, packTypeLabel(product))}</span>
                     </td>
                     <td className="p-4 whitespace-nowrap"><span className="text-foreground/80 font-medium">{product.minStock} u.</span></td>
                     <td className="p-3">
@@ -440,10 +498,22 @@ export function InventarioView() {
             </tbody>
           </table>
         </div>
+        {paged.total > 0 && (
+          <div className="px-4 border-t border-foreground/15">
+            <PaginationBar
+              page={paged.page}
+              pageCount={paged.pageCount}
+              total={paged.total}
+              start={paged.start}
+              end={paged.end}
+              onPageChange={setPage}
+            />
+          </div>
+        )}
       </div>
 
       {productModal.isOpen && productModal.item && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface max-h-[90vh] flex flex-col shadow-2xl">
             <div className="p-6 border-b border-surface flex items-center justify-between shrink-0">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
@@ -510,12 +580,12 @@ export function InventarioView() {
                   }))}
                   className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
                 >
-                  {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {sortedCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-foreground/80 font-bold text-sm block mb-2">Marca</label>
+                  <label className="text-foreground/80 font-bold text-sm block mb-2">Proveedor</label>
                   <select
                     value={selectedBrandId}
                     onChange={(e) => setProductModal((prev) => ({
@@ -524,8 +594,8 @@ export function InventarioView() {
                     }))}
                     className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
                   >
-                    <option value="">Sin marca</option>
-                    {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    <option value="">Sin proveedor</option>
+                    {sortedBrands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -539,8 +609,8 @@ export function InventarioView() {
                     }))}
                     className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all disabled:opacity-50"
                   >
-                    <option value="">{selectedBrandId ? "Usá marca o colección, no ambas" : "Sin colección"}</option>
-                    {collections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    <option value="">{selectedBrandId ? "Usá proveedor o colección, no ambas" : "Sin colección"}</option>
+                    {sortedCollections.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>
@@ -580,14 +650,28 @@ export function InventarioView() {
               </div>
               <div className="rounded-xl border border-foreground/15 bg-background/60 p-4 space-y-4">
                 <div>
-                  <p className="text-foreground font-bold text-sm">Venta por paquete</p>
+                  <p className="text-foreground font-bold text-sm">Venta por bulto</p>
                   <p className="text-foreground/60 font-medium text-xs mt-1">
-                    El stock siempre se cuenta en unidades. Si vendés cajas de 100, poné 100 acá y el precio de esa caja (mayorista). Dejá vacío si solo se vende suelto.
+                    El stock siempre se cuenta en unidades. Si vendés una caja de 100, elegí el tipo (caja, paquete, rollo...) y el precio de ese bulto.
                   </p>
+                </div>
+                <div>
+                  <label className="text-foreground/80 font-bold text-sm block mb-2">Tipo de bulto</label>
+                  <select
+                    value={productModal.item.packTypeId ?? ""}
+                    onChange={(e) => setProductModal((prev) => ({
+                      ...prev,
+                      item: { ...prev.item, packTypeId: e.target.value ? Number(e.target.value) : null },
+                    }))}
+                    className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
+                  >
+                    <option value="">Sin tipo (se muestra como Paquete)</option>
+                    {packTypes.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-foreground/80 font-bold text-sm block mb-2">Unidades por paquete</label>
+                    <label className="text-foreground/80 font-bold text-sm block mb-2">Unidades por bulto</label>
                     <input
                       type="text"
                       inputMode="numeric"
@@ -603,7 +687,7 @@ export function InventarioView() {
                     />
                   </div>
                   <div>
-                    <label className="text-foreground/80 font-bold text-sm block mb-2">Precio paquete ($)</label>
+                    <label className="text-foreground/80 font-bold text-sm block mb-2">Precio bulto ($)</label>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -620,6 +704,77 @@ export function InventarioView() {
                     />
                   </div>
                 </div>
+              </div>
+              <div className="rounded-xl border border-foreground/15 bg-background/60 p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-foreground font-bold text-sm">Precios por cantidad</p>
+                    <p className="text-foreground/60 font-medium text-xs mt-1">
+                      Como en la lista: venta por 10, 25, 100 o cualquier número.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setProductModal((prev) => ({
+                      ...prev,
+                      item: { ...prev.item, priceTiers: [...(prev.item.priceTiers || []), { quantity: "", price: "" }] },
+                    }))}
+                    className="shrink-0 bg-secondary text-foreground font-bold text-xs px-3 py-2 rounded-lg"
+                  >
+                    + Cantidad
+                  </button>
+                </div>
+                {(productModal.item.priceTiers || []).map((tier, idx) => (
+                  <div key={idx} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-end">
+                    <div>
+                      <label className="text-foreground/80 font-bold text-xs block mb-1">Cantidad</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={tier.quantity}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9]/g, "").replace(/^0+(?=\d)/, "");
+                          setProductModal((prev) => {
+                            const next = [...(prev.item.priceTiers || [])];
+                            next[idx] = { ...next[idx], quantity: val };
+                            return { ...prev, item: { ...prev.item, priceTiers: next } };
+                          });
+                        }}
+                        placeholder="10"
+                        className="w-full bg-surface text-foreground font-bold rounded-xl px-3 py-2.5 border border-surface focus:border-primary outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-foreground/80 font-bold text-xs block mb-1">Precio ($)</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={tier.price}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
+                          setProductModal((prev) => {
+                            const next = [...(prev.item.priceTiers || [])];
+                            next[idx] = { ...next[idx], price: val };
+                            return { ...prev, item: { ...prev.item, priceTiers: next } };
+                          });
+                        }}
+                        placeholder="0"
+                        className="w-full bg-surface text-foreground font-bold rounded-xl px-3 py-2.5 border border-surface focus:border-primary outline-none"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setProductModal((prev) => ({
+                        ...prev,
+                        item: { ...prev.item, priceTiers: (prev.item.priceTiers || []).filter((_, i) => i !== idx) },
+                      }))}
+                      className="h-10 w-10 flex items-center justify-center text-foreground/50 hover:text-red-500"
+                      title="Quitar"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
               </div>
               <div className="grid grid-cols-2 gap-4">
               {[{ label: "Stock actual (unidades)", field: "stock" }, { label: "Stock mínimo (unidades)", field: "minStock" }].map(({ label, field }) => (
@@ -642,13 +797,17 @@ export function InventarioView() {
               </div>
               {parseInt(productModal.item.unitsPerPack, 10) > 1 && (
                 <p className="text-foreground/60 font-medium text-xs -mt-2">
-                  Con este stock: {formatStock(productModal.item.stock, productModal.item.unitsPerPack)}
+                  Con este stock: {formatStock(
+                    productModal.item.stock,
+                    productModal.item.unitsPerPack,
+                    packTypes.find((t) => t.id === Number(productModal.item.packTypeId))?.name
+                  )}
                 </p>
               )}
             </div>
             <div className="p-6 border-t border-surface flex gap-4 shrink-0">
               <button onClick={() => setProductModal({ isOpen: false, item: null, isNew: false })} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleSaveProduct} disabled={submitting} className="flex-1 bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-background font-bold py-4 rounded-xl transition-all shadow-md">{submitting ? "Guardando..." : "Guardar"}</button>
+              <button onClick={handleSaveProduct} disabled={submitting} className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-foreground font-bold py-4 rounded-xl transition-all shadow-md">{submitting ? "Guardando..." : "Guardar"}</button>
             </div>
           </div>
         </div>
@@ -656,7 +815,7 @@ export function InventarioView() {
 
       {/* Modal de confirmación de eliminación */}
       {deleteModal.isOpen && deleteModal.product && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-sm border border-surface shadow-2xl">
             <div className="p-6 flex flex-col items-center text-center gap-4">
               <div className="w-16 h-16 bg-red-500/15 rounded-full flex items-center justify-center">
@@ -682,7 +841,7 @@ export function InventarioView() {
               <button
                 onClick={handleDeleteProduct}
                 disabled={deleting}
-                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-background font-bold py-3 rounded-xl transition-all shadow-md"
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 disabled:cursor-not-allowed text-foreground font-bold py-3 rounded-xl transition-all shadow-md"
               >
                 {deleting ? "Eliminando..." : "Eliminar"}
               </button>
@@ -692,19 +851,19 @@ export function InventarioView() {
       )}
 
       {assignModal && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
             <div className="p-6 border-b border-surface flex items-center justify-between">
               <h2 className="text-primary font-bold text-xl">
-                Asignar {assignModal === "marca" ? "marca" : "colección"}
+                Asignar {assignModal === "proveedor" ? "proveedor" : "colección"}
               </h2>
               <button onClick={() => setAssignModal(null)} className="text-foreground/60 hover:text-foreground"><X size={22} /></button>
             </div>
             <div className="p-6 space-y-2 max-h-72 overflow-y-auto">
-              {(assignModal === "marca" ? brands : collections).length === 0 && (
-                <p className="text-foreground/60 font-medium text-sm">Creá {assignModal === "marca" ? "marcas" : "colecciones"} en Configuración.</p>
+              {(assignModal === "proveedor" ? sortedBrands : sortedCollections).length === 0 && (
+                <p className="text-foreground/60 font-medium text-sm">Creá {assignModal === "proveedor" ? "proveedores" : "colecciones"} en Configuración.</p>
               )}
-              {(assignModal === "marca" ? brands : collections).map((group) => (
+              {(assignModal === "proveedor" ? sortedBrands : sortedCollections).map((group) => (
                 <button
                   key={group.id}
                   onClick={() => handleBulkAssign(group.id)}

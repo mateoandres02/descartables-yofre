@@ -1,22 +1,29 @@
 import { PriceGroupModel } from "../models/priceGroup.model.js";
 import { ProductModel } from "../models/product.model.js";
+import { ProductPriceTierModel } from "../models/productPriceTier.model.js";
 
-const VALID_TYPES = ["marca", "coleccion"];
+const VALID_TYPES = ["proveedor", "coleccion"];
 
 function roundMoney(value) {
   return Math.round(Number(value) * 100) / 100;
 }
 
+function normalizeType(type) {
+  if (type === "marca") return "proveedor";
+  return type;
+}
+
 function labelFor(type) {
-  return type === "marca" ? "Marca" : "Colección";
+  return type === "proveedor" ? "Proveedor" : "Colección";
 }
 
 export const PriceGroupService = {
   async getAll(type) {
-    if (type && !VALID_TYPES.includes(type)) {
-      throw { status: 400, message: "Tipo inválido. Usá 'marca' o 'coleccion'." };
+    const normalized = type ? normalizeType(type) : type;
+    if (normalized && !VALID_TYPES.includes(normalized)) {
+      throw { status: 400, message: "Tipo inválido. Usá 'proveedor' o 'coleccion'." };
     }
-    const groups = await PriceGroupModel.findAll(type);
+    const groups = await PriceGroupModel.findAll(normalized);
     const counts = await ProductModel.countByPriceGroup();
     const countMap = Object.fromEntries(counts.map((row) => [row.priceGroupId, Number(row.n)]));
     return groups
@@ -25,20 +32,21 @@ export const PriceGroupService = {
   },
 
   async create({ name, type }) {
-    if (!VALID_TYPES.includes(type)) {
-      throw { status: 400, message: "Tipo inválido. Usá 'marca' o 'coleccion'." };
+    const normalized = normalizeType(type);
+    if (!VALID_TYPES.includes(normalized)) {
+      throw { status: 400, message: "Tipo inválido. Usá 'proveedor' o 'coleccion'." };
     }
-    if (!name?.trim()) throw { status: 400, message: `El nombre de la ${labelFor(type).toLowerCase()} es requerido.` };
+    if (!name?.trim()) throw { status: 400, message: `El nombre del ${labelFor(normalized).toLowerCase()} es requerido.` };
     try {
       const [created] = await PriceGroupModel.create({
         name: name.trim(),
-        type,
+        type: normalized,
         lastIncreasePercent: 0,
       });
       return { ...created, productCount: 0 };
     } catch (err) {
       if (String(err?.message || "").toLowerCase().includes("unique")) {
-        throw { status: 409, message: `Ya existe una ${labelFor(type).toLowerCase()} con ese nombre.` };
+        throw { status: 409, message: `Ya existe ${normalized === "proveedor" ? "un proveedor" : "una colección"} con ese nombre.` };
       }
       throw err;
     }
@@ -87,6 +95,10 @@ export const PriceGroupService = {
       }
       if (updateCost) patch.cost = roundMoney((product.cost || 0) * factor);
       await ProductModel.update(product.id, patch);
+      const tiers = await ProductPriceTierModel.findByProductId(product.id);
+      for (const tier of tiers) {
+        await ProductPriceTierModel.update(tier.id, { price: roundMoney(tier.price * factor) });
+      }
     }
 
     const [updated] = await PriceGroupModel.update(id, { lastIncreasePercent: value });

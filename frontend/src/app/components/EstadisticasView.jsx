@@ -192,7 +192,7 @@ export function EstadisticasView() {
           <div className="bg-surface p-1 rounded-xl border border-foreground/15 shadow-sm flex gap-1">
             {["todo","mensual","semanal"].map((p) => (
               <button key={p} onClick={() => setPeriod(p)}
-                className={`px-4 md:px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm ${period === p ? "bg-secondary text-background" : "bg-transparent text-foreground/70 hover:text-foreground"}`}>
+                className={`px-4 md:px-6 py-2 rounded-lg text-sm font-bold transition-all shadow-sm ${period === p ? "bg-secondary text-foreground" : "bg-transparent text-foreground/70 hover:text-foreground"}`}>
                 {PERIOD_LABELS[p]}
               </button>
             ))}
@@ -341,7 +341,7 @@ export function EstadisticasView() {
         <div className="flex border-b border-foreground/15">
           {[{id:"mes",label:"Por mes"},{id:"semana",label:"Por semana"}].map(({id,label})=>(
             <button key={id} onClick={()=>{setHistTab(id);setExpandedHist(null);}}
-              className={`px-6 py-3 text-sm font-bold transition-all ${histTab===id?"bg-secondary text-background":"text-foreground/70 hover:text-foreground"}`}>
+              className={`px-6 py-3 text-sm font-bold transition-all ${histTab===id?"bg-secondary text-foreground":"text-foreground/70 hover:text-foreground"}`}>
               {label}
             </button>
           ))}
@@ -372,7 +372,7 @@ export function EstadisticasView() {
                       <div className="flex items-center gap-2">
                         <span className="text-foreground font-bold">{row.label}</span>
                         {row.isCurrent && (
-                          <span className="text-[10px] font-black bg-secondary text-background px-1.5 py-0.5 rounded uppercase tracking-wide">actual</span>
+                          <span className="text-[10px] font-black bg-secondary text-foreground px-1.5 py-0.5 rounded uppercase tracking-wide">actual</span>
                         )}
                       </div>
                     </td>

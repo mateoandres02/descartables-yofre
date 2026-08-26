@@ -19,7 +19,7 @@ export function DailyExpenseModal({ onClose, onSubmit }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
         <div className="p-6 border-b border-surface flex items-center justify-between">
           <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
@@ -82,7 +82,7 @@ export function DailyExpenseModal({ onClose, onSubmit }) {
             <button
               type="submit"
               disabled={submitting}
-              className="flex-1 bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-background font-bold py-4 rounded-xl transition-all shadow-md shadow-secondary/20"
+              className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-foreground font-bold py-4 rounded-xl transition-all shadow-md shadow-secondary/20"
             >
               {submitting ? "Guardando..." : "Confirmar"}
             </button>

@@ -140,7 +140,7 @@ export function CreadorView() {
               <button
                 onClick={handleSaveCutoff}
                 disabled={saving || !selectedDay}
-                className="flex items-center justify-center gap-2 bg-secondary hover:bg-foreground disabled:bg-background disabled:text-foreground/40 text-background font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-secondary/20 disabled:shadow-none"
+                className="flex items-center justify-center gap-2 bg-secondary hover:brightness-125 disabled:bg-background disabled:text-foreground/40 text-foreground font-bold px-6 py-3 rounded-xl transition-all shadow-md shadow-secondary/20 disabled:shadow-none"
               >
                 <Play size={18} />
                 {saving ? "Guardando..." : "Guardar día"}
@@ -167,7 +167,7 @@ export function CreadorView() {
                 <button
                   onClick={handleReactivate}
                   disabled={reactivating}
-                  className="shrink-0 flex items-center gap-2 bg-success hover:bg-foreground disabled:bg-success/40 text-background font-bold px-5 py-3 rounded-xl transition-all shadow-md"
+                  className="shrink-0 flex items-center gap-2 bg-success hover:brightness-125 disabled:bg-success/40 text-foreground font-bold px-5 py-3 rounded-xl transition-all shadow-md"
                 >
                   <RotateCcw size={18} />
                   {reactivating ? "Reactivando..." : "Reactivar"}

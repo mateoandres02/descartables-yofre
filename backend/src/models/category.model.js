@@ -1,10 +1,10 @@
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { categories } from "../db/schema.js";
 
 export const CategoryModel = {
   findAll() {
-    return db.select().from(categories);
+    return db.select().from(categories).orderBy(asc(categories.name));
   },
 
   findById(id) {

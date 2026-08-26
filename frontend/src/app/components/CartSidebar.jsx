@@ -68,7 +68,7 @@ export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout,
       <button
         onClick={onCheckout}
         disabled={items.length === 0}
-        className="w-full bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-background font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-secondary/20"
+        className="w-full bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-foreground font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-secondary/20"
       >
         <CreditCard size={20} />
         Finalizar Venta
@@ -92,7 +92,7 @@ export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout,
       {isMobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div
-            className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={onMobileClose}
           />
           <div

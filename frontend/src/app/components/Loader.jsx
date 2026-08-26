@@ -19,7 +19,7 @@ export function Loader({ fullScreen = false }) {
           style={{ animation: "spin 0.7s linear infinite reverse" }}
         />
         {/* Punto central */}
-        <div className="absolute inset-[14px] rounded-full bg-foreground/40 shadow-inner" />
+        <div className="absolute inset-[14px] rounded-full bg-elevated shadow-inner" />
       </div>
 
       <p className="text-foreground text-sm tracking-widest uppercase font-black select-none">

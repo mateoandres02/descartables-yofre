@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Search, Lock, Wallet, ShoppingCart, Unlock, X, ScanBarcode } from "lucide-react";
 import { ProductCard } from "./ProductCard.jsx";
 import { CartSidebar } from "./CartSidebar.jsx";
@@ -8,8 +8,9 @@ import { Loader } from "./Loader.jsx";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner.js";
-import { hasPackSale, lineIdFor, packSizeOf, unitsInCartForProduct } from "../../utils/pack.js";
+import { hasPackSale, lineIdFor, packSizeOf, packTypeLabel, unitsEachOf, unitsInCartForProduct } from "../../utils/pack.js";
 import { ACCOUNT_METHOD_NAME } from "../constants.js";
+import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
 
 export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaja, role }) {
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,6 +26,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [openingAmount, setOpeningAmount] = useState("");
   const [openingCaja, setOpeningCaja] = useState(false);
+  const [page, setPage] = useState(1);
   const cartRef = useRef(cartItems);
   cartRef.current = cartItems;
 
@@ -41,36 +43,71 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     ]).then(([pRes, mRes, cRes]) => {
       setProducts(pRes.data);
       setPaymentMethods(mRes.data);
-      setCategories(cRes.data.map((c) => c.name));
+      setCategories(
+        cRes.data
+          .map((c) => c.name)
+          .sort(byNameEs)
+      );
     }).catch(() => {})
     .finally(() => setLoading(false));
   }, []);
 
-  const allCategories = ["Todos", ...categories];
-
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    const matchesSearch =
-      (product.name || "").toLowerCase().includes(term) ||
-      (product.codbarra && String(product.codbarra).includes(searchTerm.trim()));
-    const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory && product.isAvailable;
-  });
+    const code = searchTerm.trim();
+    return products
+      .filter((product) => {
+        const matchesSearch =
+          (product.name || "").toLowerCase().includes(term) ||
+          (product.codbarra && String(product.codbarra).includes(code));
+        const matchesCategory = selectedCategory === "Todos" || product.category === selectedCategory;
+        return matchesSearch && matchesCategory && product.isAvailable;
+      })
+      .sort((a, b) => byNameEs(a.name, b.name));
+  }, [products, searchTerm, selectedCategory]);
 
-  const handleAddToCart = (product, saleMode = "unidad") => {
+  useEffect(() => { setPage(1); }, [searchTerm, selectedCategory]);
+
+  const paged = paginate(filteredProducts, page);
+
+  const productByBarcode = useMemo(() => {
+    const map = new Map();
+    for (const p of products) {
+      const code = p.codbarra && String(p.codbarra);
+      if (code && !map.has(code)) map.set(code, p);
+    }
+    return map;
+  }, [products]);
+
+  const handleAddToCart = useCallback((product, saleMode = "unidad", extra = {}) => {
     const canPack = hasPackSale(product);
-    const mode = saleMode === "paquete" && canPack ? "paquete" : "unidad";
-    const packSize = packSizeOf(product);
-    const unitsEach = mode === "paquete" ? packSize : 1;
-    const lineId = lineIdFor(product.id, mode);
-    const price = mode === "paquete" ? Number(product.packPrice) : Number(product.price);
+    let mode = "unidad";
+    let unitsEach = 1;
+    let price = Number(product.price);
+    let lineExtra;
+    let toastLabel = product.name;
+
+    if (saleMode === "paquete" && canPack) {
+      mode = "paquete";
+      unitsEach = packSizeOf(product);
+      price = Number(product.packPrice);
+      toastLabel = `${product.name} (${packTypeLabel(product)} x${unitsEach})`;
+    } else if (saleMode === "escala" && extra.tier) {
+      mode = "escala";
+      unitsEach = Number(extra.tier.quantity);
+      price = Number(extra.tier.price);
+      lineExtra = unitsEach;
+      toastLabel = `${product.name} (x${unitsEach})`;
+    }
+
+    const lineId = lineIdFor(product.id, mode, lineExtra);
     const prev = cartRef.current;
     const remaining = Number(product.stock) - unitsInCartForProduct(prev, product.id);
 
     if (remaining < unitsEach) {
       toast.error("Sin stock suficiente", {
-        description: remaining < packSize && mode === "paquete"
-          ? `Quedan ${Math.max(0, remaining)} u. de ${product.name}; un paquete son ${packSize} u.`
+        description: unitsEach > 1
+          ? `Quedan ${Math.max(0, remaining)} u. de ${product.name}; esta venta son ${unitsEach} u.`
           : `Solo hay ${product.stock} unidad${product.stock === 1 ? "" : "es"} de ${product.name}`,
       });
       return;
@@ -88,27 +125,25 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
         name: product.name,
         saleMode: mode,
         price,
-        unitsPerPack: packSize,
+        unitsEach,
+        unitsPerPack: unitsEach,
+        packTypeName: product.packTypeName,
         stock: product.stock,
         quantity: 1,
       }];
     cartRef.current = next;
     setCartItems(next);
-    toast.success(mode === "paquete"
-      ? `${product.name} (paquete x${packSize}) agregado`
-      : `${product.name} agregado al carrito`);
-  };
+    toast.success(`${toastLabel} agregado`);
+  }, []);
 
   const handleBarcodeScan = useCallback((code) => {
-    const product = products.find(
-      (p) => p.codbarra && String(p.codbarra) === String(code) && p.isAvailable
-    );
-    if (!product) {
+    const product = productByBarcode.get(String(code));
+    if (!product || !product.isAvailable) {
       toast.error("Producto no encontrado", { description: `No hay producto con código ${code}` });
       return;
     }
     handleAddToCart(product, "unidad");
-  }, [products]);
+  }, [productByBarcode, handleAddToCart]);
 
   useBarcodeScanner({
     onScan: handleBarcodeScan,
@@ -120,10 +155,8 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     const code = searchTerm.trim();
     if (!/^\d+$/.test(code)) return;
 
-    const product = products.find(
-      (p) => p.codbarra && String(p.codbarra) === code && p.isAvailable
-    );
-    if (product) {
+    const product = productByBarcode.get(code);
+    if (product && product.isAvailable) {
       e.preventDefault();
       handleAddToCart(product, "unidad");
       setSearchTerm("");
@@ -135,7 +168,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     const item = cartItems.find((i) => i.lineId === lineId);
     if (!item) return;
     const others = unitsInCartForProduct(cartItems, item.productId ?? item.id, lineId);
-    const unitsEach = item.saleMode === "paquete" ? packSizeOf(item) : 1;
+    const unitsEach = unitsEachOf(item);
     if (others + quantity * unitsEach > item.stock) {
       toast.error("Sin stock suficiente", { description: `Solo hay ${item.stock} unidad${item.stock === 1 ? "" : "es"} de ${item.name}` });
       return;
@@ -238,7 +271,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
                 <p className="text-foreground/80 text-sm md:text-base mb-4">Abrí la caja para comenzar a registrar ventas.</p>
                 <button
                   onClick={() => setShowOpenModal(true)}
-                  className="w-full bg-success hover:bg-foreground text-background font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                  className="w-full bg-success hover:brightness-125 text-foreground font-bold py-3 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                 >
                   <Unlock size={18} /> Abrir Caja
                 </button>
@@ -258,7 +291,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
             {isCajaOpen && (
               <button
                 onClick={() => setShowExpenseModal(true)}
-                className="bg-primary hover:bg-secondary text-background font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors text-sm md:text-base self-start sm:self-auto shadow-sm"
+                className="bg-primary hover:bg-secondary text-foreground font-medium px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors text-sm md:text-base self-start sm:self-auto shadow-sm"
               >
                 <Wallet size={18} />
                 Gastos / Extracción
@@ -284,19 +317,18 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
             </p>
           )}
 
-          {/* Filtro de categorías — scroll horizontal en móvil */}
-          <div className="flex gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-0 md:flex-wrap scrollbar-hide">
-            {allCategories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 md:px-6 py-2 md:py-3 rounded-lg transition-all text-sm whitespace-nowrap shrink-0 ${
-                  selectedCategory === category ? "bg-secondary text-background shadow-md font-bold" : "bg-surface text-foreground/80 hover:bg-surface hover:text-foreground font-medium"
-                }`}
-              >
-                {category}
-              </button>
-            ))}
+          <div className="mb-2">
+            <label className="text-foreground/80 font-bold text-sm block mb-2">Categoría</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full sm:max-w-sm bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm"
+            >
+              <option value="Todos">Todas las categorías</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -304,17 +336,25 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
           {filteredProducts.length === 0 && (
             <p className="text-foreground/60 font-medium text-center py-12">No hay productos disponibles</p>
           )}
-          {filteredProducts.map((product) => (
+          {paged.slice.map((product) => (
             <ProductCard key={product.id} product={product} onAddToCart={handleAddToCart} />
           ))}
         </div>
+        <PaginationBar
+          page={paged.page}
+          pageCount={paged.pageCount}
+          total={paged.total}
+          start={paged.start}
+          end={paged.end}
+          onPageChange={setPage}
+        />
       </div>
 
       {/* Botón flotante del carrito — solo móvil */}
       <div className="fixed bottom-20 right-4 md:hidden z-30">
         <button
           onClick={() => setShowMobileCart(true)}
-          className="bg-secondary hover:bg-foreground text-background h-14 px-5 rounded-full flex items-center gap-2.5 shadow-xl shadow-foreground/30 transition-all active:scale-95"
+          className="bg-secondary hover:brightness-125 text-foreground h-14 px-5 rounded-full flex items-center gap-2.5 shadow-xl shadow-foreground/30 transition-all active:scale-95"
         >
           <ShoppingCart size={20} />
           {totalCartItems > 0 && (
@@ -344,11 +384,11 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
         />
       )}
       {showPaymentModal && paymentMethods.length === 0 && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-surface rounded-2xl w-full max-w-md border border-foreground/15 p-8 text-center shadow-2xl">
             <p className="text-foreground text-xl mb-4 font-bold">No hay métodos de pago configurados</p>
             <p className="text-foreground/70 mb-6 font-medium">Configurá al menos un método de pago en la sección Configuración.</p>
-            <button onClick={() => setShowPaymentModal(false)} className="bg-secondary hover:bg-foreground text-background px-6 py-3 rounded-xl font-bold">Cerrar</button>
+            <button onClick={() => setShowPaymentModal(false)} className="bg-secondary hover:brightness-125 text-foreground px-6 py-3 rounded-xl font-bold">Cerrar</button>
           </div>
         </div>
       )}
@@ -361,7 +401,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
       )}
 
       {showOpenModal && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
             <div className="p-6 border-b border-surface flex items-center justify-between">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
@@ -388,7 +428,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
               <button onClick={() => setShowOpenModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">
                 Cancelar
               </button>
-              <button onClick={handleConfirmOpen} disabled={openingCaja} className="flex-1 bg-success hover:bg-foreground disabled:bg-success/40 text-background font-bold py-4 rounded-xl transition-all shadow-md">
+              <button onClick={handleConfirmOpen} disabled={openingCaja} className="flex-1 bg-success hover:brightness-125 disabled:bg-success/40 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">
                 {openingCaja ? "Abriendo..." : "Confirmar Apertura"}
               </button>
             </div>

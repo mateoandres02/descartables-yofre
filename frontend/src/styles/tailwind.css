@@ -2,10 +2,11 @@
 @source '../**/*.{js,jsx}';
 
 @theme {
-  --color-background: #F4EFE7;
-  --color-surface: #DCCAB6;
-  --color-primary: #D49A7A;
-  --color-secondary: #B8654A;
-  --color-success: #8C8F6E;
-  --color-foreground: #5E4A3C;
+  --color-background: #121212;
+  --color-surface: #1a1a1a;
+  --color-elevated: #2a2a2a;
+  --color-primary: #6b21a8;
+  --color-secondary: #6b21a8;
+  --color-success: #34d399;
+  --color-foreground: #f1f3fc;
 }

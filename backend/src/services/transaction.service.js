@@ -1,6 +1,7 @@
 import { TransactionModel } from "../models/transaction.model.js";
 import { CashRegisterModel } from "../models/cashRegister.model.js";
 import { ProductModel } from "../models/product.model.js";
+import { ProductPriceTierModel } from "../models/productPriceTier.model.js";
 import { ProductService } from "./product.service.js";
 import { CustomerService } from "./customer.service.js";
 import { getArgentinaTime } from "../db/timeUtils.js";
@@ -56,7 +57,7 @@ export const TransactionService = {
     const stockDeductions = [];
 
     for (const i of items) {
-      const saleMode = i.saleMode === "paquete" ? "paquete" : "unidad";
+      const saleMode = i.saleMode === "paquete" || i.saleMode === "escala" ? i.saleMode : "unidad";
       let packSize = 1;
       let productName = i.name || i.productName;
 
@@ -68,10 +69,21 @@ export const TransactionService = {
         const configuredPack = Number(product.unitsPerPack) || 1;
         if (saleMode === "paquete") {
           if (configuredPack < 2 || product.packPrice == null) {
-            throw { status: 400, message: `"${product.name}" no está configurado para venta por paquete.` };
+            throw { status: 400, message: `"${product.name}" no está configurado para venta por bulto.` };
           }
           packSize = configuredPack;
-          productName = `${product.name} (paquete x${packSize})`;
+          const packLabel = product.packTypeName || "paquete";
+          productName = `${product.name} (${packLabel} x${packSize})`;
+          stockDeductions.push({ productId: product.id, units: Number(i.quantity) * packSize });
+        } else if (saleMode === "escala") {
+          const tierQty = Number(i.unitsPerPack || i.tierQuantity || i.packSize);
+          const tiers = await ProductPriceTierModel.findByProductId(product.id);
+          const tier = tiers.find((t) => Number(t.quantity) === tierQty);
+          if (!tier || tierQty < 2) {
+            throw { status: 400, message: `"${product.name}" no tiene precio para venta por ${tierQty || "esa cantidad"}.` };
+          }
+          packSize = tierQty;
+          productName = `${product.name} (x${packSize})`;
           stockDeductions.push({ productId: product.id, units: Number(i.quantity) * packSize });
         } else {
           if (configuredPack > 1) {

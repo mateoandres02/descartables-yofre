@@ -153,7 +153,7 @@ export function CuentasCorrientesView() {
               <button
                 onClick={openPaymentModal}
                 disabled={detail.debt <= 0}
-                className="bg-success hover:bg-foreground disabled:bg-surface disabled:text-foreground/40 text-background font-bold px-5 py-3 rounded-xl flex items-center gap-2 transition-all shadow-md self-start"
+                className="bg-success hover:brightness-125 disabled:bg-surface disabled:text-foreground/40 text-foreground font-bold px-5 py-3 rounded-xl flex items-center gap-2 transition-all shadow-md self-start"
               >
                 <HandCoins size={18} /> Registrar pago
               </button>
@@ -238,7 +238,7 @@ export function CuentasCorrientesView() {
         )}
 
         {paymentModal && (
-          <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
               <div className="p-6 border-b border-surface flex items-center justify-between">
                 <h2 className="text-primary font-bold text-xl flex items-center gap-2">
@@ -272,7 +272,7 @@ export function CuentasCorrientesView() {
                     </div>
                     <button
                       onClick={() => setPaymentModal((prev) => ({ ...prev, amount: String(detail.debt.toFixed(2)) }))}
-                      className="bg-secondary hover:bg-foreground text-background font-bold px-4 rounded-xl transition-all shadow-sm shrink-0"
+                      className="bg-secondary hover:brightness-125 text-foreground font-bold px-4 rounded-xl transition-all shadow-sm shrink-0"
                     >
                       Saldar todo
                     </button>
@@ -303,7 +303,7 @@ export function CuentasCorrientesView() {
                 <button
                   onClick={handleRegisterPayment}
                   disabled={submitting}
-                  className="flex-1 bg-success hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 text-background font-bold py-3 rounded-xl transition-all shadow-md"
+                  className="flex-1 bg-success hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 text-foreground font-bold py-3 rounded-xl transition-all shadow-md"
                 >
                   {submitting ? "Registrando..." : "Confirmar pago"}
                 </button>

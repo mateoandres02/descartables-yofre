@@ -226,11 +226,11 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
               </div>
             </div>
             {isCajaOpen ? (
-              <button onClick={() => setShowClosureModal(true)} className="bg-secondary hover:bg-foreground text-background font-bold px-4 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base self-start sm:self-auto shadow-md">
+              <button onClick={() => setShowClosureModal(true)} className="bg-secondary hover:brightness-125 text-foreground font-bold px-4 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base self-start sm:self-auto shadow-md">
                 <Lock size={18} /> Cerrar Caja
               </button>
             ) : (
-              <button onClick={() => setShowOpenModal(true)} className="bg-success hover:bg-foreground text-background font-bold px-4 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base self-start sm:self-auto shadow-md">
+              <button onClick={() => setShowOpenModal(true)} className="bg-success hover:brightness-125 text-foreground font-bold px-4 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base self-start sm:self-auto shadow-md">
                 <Unlock size={18} /> Abrir Caja
               </button>
             )}
@@ -445,7 +445,7 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
       )}
 
       {showClosureModal && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-2xl border border-surface shadow-2xl">
             <div className="p-6 border-b border-surface"><h2 className="text-primary font-bold text-2xl">Cierre de Caja</h2></div>
             <div className="p-6 space-y-6">
@@ -471,14 +471,14 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
             </div>
             <div className="p-6 border-t border-surface flex gap-4">
               <button onClick={() => setShowClosureModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleCloseCaja} className="flex-1 bg-secondary hover:bg-foreground text-background font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Cierre</button>
+              <button onClick={handleCloseCaja} className="flex-1 bg-secondary hover:brightness-125 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Cierre</button>
             </div>
           </div>
         </div>
       )}
 
       {showOpenModal && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
             <div className="p-6 border-b border-surface"><h2 className="text-primary font-bold text-2xl flex items-center gap-2"><Unlock size={24} className="text-success" /> Abrir Caja</h2></div>
             <div className="p-6 space-y-4">
@@ -487,7 +487,7 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
             </div>
             <div className="p-6 border-t border-surface flex gap-4">
               <button onClick={() => setShowOpenModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleConfirmOpen} className="flex-1 bg-success hover:bg-foreground text-background font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Apertura</button>
+              <button onClick={handleConfirmOpen} className="flex-1 bg-success hover:brightness-125 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Apertura</button>
             </div>
           </div>
         </div>

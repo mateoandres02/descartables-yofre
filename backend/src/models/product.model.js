@@ -1,6 +1,6 @@
-import { eq, count } from "drizzle-orm";
+import { eq, count, asc } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { products, categories, priceGroups } from "../db/schema.js";
+import { products, categories, priceGroups, packTypes } from "../db/schema.js";
 
 const SELECT_FIELDS = {
   id: products.id,
@@ -11,6 +11,8 @@ const SELECT_FIELDS = {
   priceGroupId: products.priceGroupId,
   priceGroupName: priceGroups.name,
   priceGroupType: priceGroups.type,
+  packTypeId: products.packTypeId,
+  packTypeName: packTypes.name,
   cost: products.cost,
   price: products.price,
   unitsPerPack: products.unitsPerPack,
@@ -25,12 +27,13 @@ const SELECT_FIELDS = {
 function withJoins(query) {
   return query
     .leftJoin(categories, eq(products.categoryId, categories.id))
-    .leftJoin(priceGroups, eq(products.priceGroupId, priceGroups.id));
+    .leftJoin(priceGroups, eq(products.priceGroupId, priceGroups.id))
+    .leftJoin(packTypes, eq(products.packTypeId, packTypes.id));
 }
 
 export const ProductModel = {
   findAll() {
-    return withJoins(db.select(SELECT_FIELDS).from(products));
+    return withJoins(db.select(SELECT_FIELDS).from(products)).orderBy(asc(products.name));
   },
 
   findById(id) {

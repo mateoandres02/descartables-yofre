@@ -156,7 +156,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-background rounded-2xl w-full max-w-2xl border border-surface shadow-2xl max-h-[92vh] flex flex-col">
         <div className="p-6 border-b border-surface flex items-center justify-between shrink-0">
           <h2 className="text-primary font-bold text-2xl">Procesar Pago</h2>
@@ -198,7 +198,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
                   <button
                     onClick={applyDiscount}
                     disabled={!discountInput || parseFloat(discountInput) <= 0 || parseFloat(discountInput) > 100}
-                    className="bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/40 text-background font-bold px-4 py-2 rounded-lg text-sm transition-all shadow-sm shrink-0"
+                    className="bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/40 text-foreground font-bold px-4 py-2 rounded-lg text-sm transition-all shadow-sm shrink-0"
                   >
                     Aplicar
                   </button>
@@ -387,7 +387,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
                     </div>
                     <button
                       onClick={chargeFullToAccount}
-                      className="bg-secondary hover:bg-foreground text-background font-bold px-4 rounded-lg transition-all shadow-sm shrink-0"
+                      className="bg-secondary hover:brightness-125 text-foreground font-bold px-4 rounded-lg transition-all shadow-sm shrink-0"
                     >
                       Cargar totalidad
                     </button>
@@ -433,7 +433,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
           <button
             onClick={handleConfirm}
             disabled={!canConfirm || submitting}
-            className="flex-1 bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-background font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-secondary/20"
+            className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-foreground font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-secondary/20"
           >
             <Printer size={20} />
             {submitting ? "Registrando..." : change > 0 ? `Confirmar — Dar vuelto $${change.toFixed(2)}` : "Confirmar e Imprimir Ticket"}

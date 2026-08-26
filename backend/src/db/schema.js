@@ -33,16 +33,23 @@ export const paymentMethods = sqliteTable("payment_methods", {
   surcharge: real("surcharge").notNull().default(0), // porcentaje, ej: 10.5
 });
 
-// ─── Marcas y colecciones (aumentos de precio) ───────────────────────────────
+// ─── Proveedores y colecciones (aumentos de precio) ──────────────────────────
 
 export const priceGroups = sqliteTable("price_groups", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  type: text("type", { enum: ["marca", "coleccion"] }).notNull(),
+  type: text("type", { enum: ["proveedor", "coleccion"] }).notNull(),
   lastIncreasePercent: real("last_increase_percent").notNull().default(0),
 }, (table) => [
   uniqueIndex("price_groups_name_type_unique").on(table.name, table.type),
 ]);
+
+// ─── Tipos de bulto (paquete, caja, rollo, etc.) ─────────────────────────────
+
+export const packTypes = sqliteTable("pack_types", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull().unique(),
+});
 
 // ─── Productos ───────────────────────────────────────────────────────────────
 
@@ -52,6 +59,7 @@ export const products = sqliteTable("products", {
   codbarra: text("cod_barra").unique(),
   categoryId: integer("category_id").references(() => categories.id, { onDelete: "set null" }),
   priceGroupId: integer("price_group_id").references(() => priceGroups.id, { onDelete: "set null" }),
+  packTypeId: integer("pack_type_id").references(() => packTypes.id, { onDelete: "set null" }),
   cost: real("cost").notNull().default(0),
   price: real("price").notNull(),
   unitsPerPack: integer("units_per_pack").notNull().default(1),
@@ -126,9 +134,22 @@ export const transactionItems = sqliteTable("transaction_items", {
   price: real("price").notNull(),
   quantity: integer("quantity").notNull(),
   total: real("total").notNull(),
-  saleMode: text("sale_mode", { enum: ["unidad", "paquete"] }).notNull().default("unidad"),
+  saleMode: text("sale_mode", { enum: ["unidad", "paquete", "escala"] }).notNull().default("unidad"),
   packSize: integer("pack_size").notNull().default(1),
 });
+
+// ─── Precios por cantidad (venta por 10, 25, 100, etc.) ──────────────────────
+
+export const productPriceTiers = sqliteTable("product_price_tiers", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  productId: integer("product_id")
+    .notNull()
+    .references(() => products.id, { onDelete: "cascade" }),
+  quantity: integer("quantity").notNull(),
+  price: real("price").notNull(),
+}, (table) => [
+  uniqueIndex("product_price_tiers_product_qty_unique").on(table.productId, table.quantity),
+]);
 
 // ─── Gastos fijos ─────────────────────────────────────────────────────────────
 

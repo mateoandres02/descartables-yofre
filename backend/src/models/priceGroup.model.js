@@ -1,12 +1,13 @@
-import { eq } from "drizzle-orm";
+import { eq, asc } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { priceGroups } from "../db/schema.js";
 
 export const PriceGroupModel = {
   findAll(type) {
-    const query = db.select().from(priceGroups);
-    if (type) return query.where(eq(priceGroups.type, type));
-    return query;
+    const query = type
+      ? db.select().from(priceGroups).where(eq(priceGroups.type, type))
+      : db.select().from(priceGroups);
+    return query.orderBy(asc(priceGroups.name));
   },
 
   findById(id) {

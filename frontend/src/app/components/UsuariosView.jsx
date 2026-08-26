@@ -69,7 +69,7 @@ export function UsuariosView() {
           <h1 className="text-foreground font-bold text-2xl md:text-4xl mb-1 md:mb-2">Gestión de Usuarios</h1>
           <p className="text-foreground/80 font-medium text-sm">Administrá los accesos y roles del sistema</p>
         </div>
-        <button onClick={handleAddUser} className="bg-secondary hover:bg-foreground text-background px-4 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base self-start sm:self-auto font-bold shadow-md shadow-secondary/20">
+        <button onClick={handleAddUser} className="bg-secondary hover:brightness-125 text-foreground px-4 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base self-start sm:self-auto font-bold shadow-md shadow-secondary/20">
           <UserPlus size={18} /> Nuevo Usuario
         </button>
       </div>
@@ -113,7 +113,7 @@ export function UsuariosView() {
       </div>
 
       {userModal.isOpen && userModal.item && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
             <div className="p-6 border-b border-surface flex items-center justify-between">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
@@ -147,7 +147,7 @@ export function UsuariosView() {
             </div>
             <div className="p-6 border-t border-surface flex gap-4">
               <button onClick={() => setUserModal({ isOpen: false, item: null, isNew: false })} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleSaveUser} disabled={submitting} className="flex-1 bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-background font-bold py-4 rounded-xl transition-all shadow-md">{submitting ? "Guardando..." : "Guardar"}</button>
+              <button onClick={handleSaveUser} disabled={submitting} className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-foreground font-bold py-4 rounded-xl transition-all shadow-md">{submitting ? "Guardando..." : "Guardar"}</button>
             </div>
           </div>
         </div>

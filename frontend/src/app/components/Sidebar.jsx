@@ -37,7 +37,7 @@ export function Sidebar({ activeView, onViewChange, role, onLogout }) {
                 onClick={() => onViewChange(item.id)}
                 title={item.label}
                 className={`w-full h-12 rounded-lg flex items-center px-4 gap-4 transition-all font-medium overflow-hidden ${
-                  isActive ? "bg-secondary text-background shadow-md" : "text-foreground/70 hover:bg-background/50 hover:text-foreground"
+                  isActive ? "bg-secondary text-foreground shadow-md" : "text-foreground/70 hover:bg-elevated hover:text-foreground"
                 }`}
               >
                 <Icon size={24} className="shrink-0" />
@@ -51,7 +51,7 @@ export function Sidebar({ activeView, onViewChange, role, onLogout }) {
           <button
             onClick={onLogout}
               title="Salir"
-              className="w-full h-12 rounded-lg flex items-center px-4 gap-4 text-foreground/70 hover:bg-background/50 hover:text-foreground transition-all font-medium overflow-hidden"
+              className="w-full h-12 rounded-lg flex items-center px-4 gap-4 text-foreground/70 hover:bg-elevated hover:text-foreground transition-all font-medium overflow-hidden"
           >
               <LogOut size={24} className="shrink-0" />
               <span className="text-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 whitespace-nowrap">Salir</span>

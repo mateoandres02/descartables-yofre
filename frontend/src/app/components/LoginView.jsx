@@ -73,7 +73,7 @@ export function LoginView({ onLogin }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 text-background py-4 rounded-xl font-black transition-all mt-4 shadow-md shadow-secondary/20"
+            className="w-full bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 text-foreground py-4 rounded-xl font-black transition-all mt-4 shadow-md shadow-secondary/20"
           >
             {loading ? "Ingresando..." : "Ingresar"}
           </button>

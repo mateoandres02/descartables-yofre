@@ -105,15 +105,15 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
           <p className="text-foreground/80 text-sm font-medium">Resumen en vivo de tu negocio</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => setShowWithdrawModal(true)} className="bg-primary hover:bg-secondary text-background px-3 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base font-bold shadow-sm">
+          <button onClick={() => setShowWithdrawModal(true)} className="bg-primary hover:bg-secondary text-foreground px-3 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base font-bold shadow-sm">
             <PackageMinus size={18} /> <span>Retirar</span>
           </button>
           {isCajaOpen ? (
-            <button onClick={() => setShowClosureModal(true)} className="bg-secondary hover:bg-foreground text-background px-3 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base font-medium shadow-md">
+            <button onClick={() => setShowClosureModal(true)} className="bg-secondary hover:brightness-125 text-foreground px-3 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base font-medium shadow-md">
               <Lock size={18} /> <span>Cerrar Caja</span>
             </button>
           ) : (
-            <button onClick={() => setShowOpenModal(true)} className="bg-success hover:bg-foreground text-background px-3 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base">
+            <button onClick={() => setShowOpenModal(true)} className="bg-success hover:brightness-125 text-foreground px-3 md:px-6 py-2.5 md:py-3 rounded-xl flex items-center gap-2 transition-all text-sm md:text-base">
               <Unlock size={18} /> <span>Abrir Caja</span>
             </button>
           )}
@@ -247,7 +247,7 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
       </div>
 
       {showOpenModal && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
             <div className="p-6 border-b border-surface">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2"><Unlock size={24} className="text-success" /> Abrir Caja</h2>
@@ -258,14 +258,14 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
             </div>
             <div className="p-6 border-t border-surface flex gap-4">
               <button onClick={() => setShowOpenModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleConfirmOpen} className="flex-1 bg-success hover:bg-foreground text-background py-4 rounded-xl transition-all">Confirmar Apertura</button>
+              <button onClick={handleConfirmOpen} className="flex-1 bg-success hover:brightness-125 text-foreground py-4 rounded-xl transition-all">Confirmar Apertura</button>
             </div>
           </div>
         </div>
       )}
 
       {showClosureModal && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
             <div className="p-6 border-b border-surface">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2"><Lock size={24} className="text-foreground" /> Cierre de Caja</h2>
@@ -275,14 +275,14 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
             </div>
             <div className="p-6 border-t border-surface flex gap-4">
               <button onClick={() => setShowClosureModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleConfirmClose} className="flex-1 bg-secondary hover:bg-foreground text-background font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Cierre</button>
+              <button onClick={handleConfirmClose} className="flex-1 bg-secondary hover:brightness-125 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Cierre</button>
             </div>
           </div>
         </div>
       )}
 
       {showWithdrawModal && (
-        <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
             <div className="p-6 border-b border-surface flex items-center justify-between">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2"><PackageMinus size={24} className="text-primary" /> Retirar Uso Interno</h2>
@@ -327,7 +327,7 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
               </div>
               <div className="pt-4 flex gap-4">
                 <button type="button" onClick={() => { setShowWithdrawModal(false); setSearchWithdraw(""); setWithdrawQty(""); }} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-                <button type="submit" disabled={submittingWithdraw || !withdrawProductId || !withdrawQty} className="flex-1 bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 text-background font-bold py-4 rounded-xl transition-all shadow-md">{submittingWithdraw ? "Retirando..." : "Confirmar Retiro"}</button>
+                <button type="submit" disabled={submittingWithdraw || !withdrawProductId || !withdrawQty} className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">{submittingWithdraw ? "Retirando..." : "Confirmar Retiro"}</button>
               </div>
             </form>
           </div>

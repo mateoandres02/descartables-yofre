@@ -61,7 +61,7 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
   };
 
   return (
-    <div className="fixed inset-0 bg-foreground/40 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
       <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
         <div className="p-6 border-b border-surface flex items-center justify-between">
           <h2 className="text-primary font-bold text-xl flex items-center gap-2">
@@ -88,7 +88,7 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
               <button
                 onClick={handleSearch}
                 disabled={!documentValue || searching}
-                className="bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/40 text-background font-bold px-4 rounded-xl transition-all shadow-sm flex items-center gap-2"
+                className="bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/40 text-foreground font-bold px-4 rounded-xl transition-all shadow-sm flex items-center gap-2"
               >
                 <Search size={18} />
                 {searching ? "..." : "Buscar"}
@@ -157,7 +157,7 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
             <button
               onClick={handleCreate}
               disabled={creating}
-              className="flex-1 bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 text-background font-bold py-3 rounded-xl transition-all shadow-md"
+              className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 text-foreground font-bold py-3 rounded-xl transition-all shadow-md"
             >
               {creating ? "Creando..." : "Crear y usar"}
             </button>
@@ -165,7 +165,7 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
             <button
               onClick={() => onSelect(found)}
               disabled={!found}
-              className="flex-1 bg-secondary hover:bg-foreground disabled:bg-surface disabled:text-foreground/50 text-background font-bold py-3 rounded-xl transition-all shadow-md"
+              className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 text-foreground font-bold py-3 rounded-xl transition-all shadow-md"
             >
               Usar cliente
             </button>

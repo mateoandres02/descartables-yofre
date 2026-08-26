@@ -15,6 +15,7 @@ import statsRoutes from "./routes/stats.routes.js";
 import internalWithdrawalRoutes from "./routes/internalWithdrawal.routes.js";
 import subscriptionRoutes from "./routes/subscription.routes.js";
 import priceGroupRoutes from "./routes/priceGroup.routes.js";
+import packTypeRoutes from "./routes/packType.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
 
 const app = express();
@@ -75,6 +76,7 @@ app.use("/api/stats", statsRoutes);
 app.use("/api/internal-withdrawals", internalWithdrawalRoutes);
 app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/price-groups", priceGroupRoutes);
+app.use("/api/pack-types", packTypeRoutes);
 app.use("/api/customers", customerRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
