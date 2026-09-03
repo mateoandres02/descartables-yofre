@@ -13,3 +13,12 @@ export function isCashMethod(methodName) {
 export function round2(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
+
+// Los precios de catálogo se cobran en decenas enteras. Se resta una tolerancia
+// mínima para que errores de punto flotante no eleven un múltiplo exacto de 10.
+export function roundPriceUpToTen(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return Number.NaN;
+  if (numeric === 0) return 0;
+  return Math.ceil(numeric / 10 - 1e-10) * 10;
+}

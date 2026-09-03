@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import { initializeDatabase } from "./db/databaseLifecycle.js";
 
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
@@ -17,6 +18,8 @@ import subscriptionRoutes from "./routes/subscription.routes.js";
 import priceGroupRoutes from "./routes/priceGroup.routes.js";
 import packTypeRoutes from "./routes/packType.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
+
+await initializeDatabase();
 
 const app = express();
 const PORT = process.env.PORT || 3001;

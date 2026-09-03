@@ -1,7 +1,6 @@
 import "dotenv/config";
-import { migrate } from "drizzle-orm/libsql/migrator";
-import { db } from "./client.js";
+import { initializeDatabase } from "./databaseLifecycle.js";
 
-await migrate(db, { migrationsFolder: "./drizzle" });
+await initializeDatabase();
 console.log("✅ Migraciones aplicadas correctamente.");
 process.exit(0);

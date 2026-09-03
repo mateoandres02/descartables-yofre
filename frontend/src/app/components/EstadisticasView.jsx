@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { DollarSign, Package, Banknote, CreditCard, TrendingDown, Wallet, RefreshCw, PackageMinus, Unlock, Lock, BookUp, Clock, ChevronDown, ChevronUp } from "lucide-react";
+import { DollarSign, Package, Banknote, CreditCard, TrendingDown, Wallet, RefreshCw, PackageMinus, Unlock, Lock, BookUp, Clock, ChevronDown, ChevronUp, Plus } from "lucide-react";
+import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
+import { DailyExpenseModal } from "./DailyExpenseModal.jsx";
 
 // Formateador de fecha en hora Argentina
 const arFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
@@ -46,42 +48,60 @@ export function EstadisticasView() {
   const [transaccionesCaja, setTransaccionesCaja] = useState([]);
   const [histTab, setHistTab]             = useState("mes"); // "mes" | "semana"
   const [expandedHist, setExpandedHist]   = useState(null);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
 
   const LOG_ICONS = { Unlock, Lock, Wallet, BookUp, PackageMinus, Package };
 
-  useEffect(() => {
+  const fetchStats = async () => {
     setLoading(true);
-    Promise.allSettled([
-      api.get("/cash-register/closed"),
-      api.get("/fixed-expenses"),
-      api.get("/daily-expenses"),
-      api.get("/products"),
-      api.get("/stats/restock"),
-      api.get("/stats/activity-log"),
-      api.get("/cash-register/status"),
-    ])
-      .then(async ([rCajas, rFijos, rDiarios, rProd, rRestock, rLog, rStatus]) => {
-        if (rCajas.status   === "fulfilled") setCajasCerradas(rCajas.value.data);
-        if (rFijos.status   === "fulfilled") setGastosFijos(rFijos.value.data);
-        if (rDiarios.status === "fulfilled") setGastosDiarios(rDiarios.value.data);
-        if (rProd.status    === "fulfilled") setProductos(rProd.value.data);
-        if (rRestock.status === "fulfilled") setRestockCost(rRestock.value.data.restockCost || 0);
-        if (rLog.status     === "fulfilled") setActivityLog(rLog.value.data);
-        if (rStatus.status  === "fulfilled") {
-          const status = rStatus.value.data;
-          setCajaStatus(status);
-          if (status.isOpen && status.register) {
-            try {
-              const txRes = await api.get(`/transactions/register/${status.register.id}`);
-              setTransaccionesCaja(txRes.data);
-            } catch { setTransaccionesCaja([]); }
-          } else {
-            setTransaccionesCaja([]);
-          }
+    try {
+      const [rCajas, rFijos, rDiarios, rProd, rRestock, rLog, rStatus] = await Promise.allSettled([
+        api.get("/cash-register/closed"),
+        api.get("/fixed-expenses"),
+        api.get("/daily-expenses"),
+        api.get("/products"),
+        api.get("/stats/restock"),
+        api.get("/stats/activity-log"),
+        api.get("/cash-register/status"),
+      ]);
+      if (rCajas.status   === "fulfilled") setCajasCerradas(rCajas.value.data);
+      if (rFijos.status   === "fulfilled") setGastosFijos(rFijos.value.data);
+      if (rDiarios.status === "fulfilled") setGastosDiarios(rDiarios.value.data);
+      if (rProd.status    === "fulfilled") setProductos(rProd.value.data);
+      if (rRestock.status === "fulfilled") setRestockCost(rRestock.value.data.restockCost || 0);
+      if (rLog.status     === "fulfilled") setActivityLog(rLog.value.data);
+      if (rStatus.status  === "fulfilled") {
+        const status = rStatus.value.data;
+        setCajaStatus(status);
+        if (status.isOpen && status.register) {
+          try {
+            const txRes = await api.get(`/transactions/register/${status.register.id}`);
+            setTransaccionesCaja(txRes.data);
+          } catch { setTransaccionesCaja([]); }
+        } else {
+          setTransaccionesCaja([]);
         }
-      })
-      .finally(() => setLoading(false));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
   }, []);
+
+  const handleDailyExpense = async (expenseData) => {
+    try {
+      await api.post("/daily-expenses", expenseData);
+      toast.success("Gasto registrado correctamente");
+      setShowExpenseModal(false);
+      await fetchStats();
+    } catch (err) {
+      toast.error("Error al registrar el gasto", { description: err.response?.data?.message || err.message });
+      throw err;
+    }
+  };
 
   // ── Cutoffs de período ────────────────────────────────────────────────────
   const today        = hoyAR();                          // "YYYY-MM-DD"
@@ -240,9 +260,19 @@ export function EstadisticasView() {
           <p className="text-3xl font-black">{monto(invertidoStock.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-foreground")}</p>
         </div>
         <div className="bg-surface rounded-xl p-6 border border-foreground/15 shadow-sm flex flex-col">
-          <div className="flex items-center gap-3 mb-4 text-foreground">
-            <TrendingDown size={20}/>
-            <h3 className="text-foreground/80 font-bold">Gastos Operativos</h3>
+          <div className="flex items-center justify-between gap-3 mb-4 text-foreground">
+            <div className="flex items-center gap-3">
+              <TrendingDown size={20}/>
+              <h3 className="text-foreground/80 font-bold">Gastos Operativos</h3>
+            </div>
+            <button
+              onClick={() => setShowExpenseModal(true)}
+              title="Agregar gasto operativo"
+              aria-label="Agregar gasto operativo"
+              className="text-foreground hover:text-foreground hover:bg-secondary transition-colors p-2 bg-elevated rounded-lg shadow-sm font-bold"
+            >
+              <Plus size={20}/>
+            </button>
           </div>
           <p className="text-3xl font-black mb-4">{monto(totalGastosOperativos.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),"text-foreground")}</p>
           <div className="border-t border-foreground/15 pt-4 mt-auto">
@@ -303,6 +333,13 @@ export function EstadisticasView() {
           </div>
         </div>
       </div>
+
+      {showExpenseModal && (
+        <DailyExpenseModal
+          onClose={() => setShowExpenseModal(false)}
+          onSubmit={handleDailyExpense}
+        />
+      )}
 
       {/* Movimientos */}
       <div className="mb-12">

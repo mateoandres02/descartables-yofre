@@ -1,11 +1,12 @@
 import { FixedExpenseService } from "../services/fixedExpense.service.js";
+import { sendControllerError } from "./controllerError.js";
 
 export const FixedExpenseController = {
   async getAll(req, res) {
     try {
       res.json(await FixedExpenseService.getAll());
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -14,7 +15,7 @@ export const FixedExpenseController = {
       const created = await FixedExpenseService.create(req.body);
       res.status(201).json(created);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -23,7 +24,7 @@ export const FixedExpenseController = {
       const updated = await FixedExpenseService.update(req.params.id, req.body);
       res.json(updated);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -31,7 +32,7 @@ export const FixedExpenseController = {
     try {
       res.json(await FixedExpenseService.remove(req.params.id));
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 };

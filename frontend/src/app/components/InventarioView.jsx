@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import api from "../../services/api.js";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner.js";
 import { formatStock, hasPackSale, packTypeLabel } from "../../utils/pack.js";
+import { formatCatalogPrice, roundPriceInput } from "../../utils/price.js";
 import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
 
 const ICON_OPTIONS = [
@@ -470,9 +471,9 @@ export function InventarioView() {
                       <span className="text-foreground/80 font-medium">${Number(product.cost || 0).toFixed(2)}</span>
                     </td>
                     <td className="p-4 whitespace-nowrap">
-                      <span className="text-foreground font-black block">${Number(product.price).toFixed(2)}</span>
+                      <span className="text-foreground font-black block">${formatCatalogPrice(product.price)}</span>
                       {hasPackSale(product) && (
-                        <span className="text-foreground/60 font-medium text-xs">{packTypeLabel(product)} x{product.unitsPerPack} ${Number(product.packPrice).toFixed(2)}</span>
+                        <span className="text-foreground/60 font-medium text-xs">{packTypeLabel(product)} x{product.unitsPerPack} ${formatCatalogPrice(product.packPrice)}</span>
                       )}
                       {Array.isArray(product.priceTiers) && product.priceTiers.length > 0 && (
                         <span className="text-foreground/50 font-medium text-[11px] block">
@@ -642,11 +643,15 @@ export function InventarioView() {
                       const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
                       setProductModal((prev) => ({ ...prev, item: { ...prev.item, price: val } }));
                     }}
+                    onBlur={(e) => setProductModal((prev) => ({ ...prev, item: { ...prev.item, price: roundPriceInput(e.target.value) } }))}
                     onFocus={(e) => e.target.select()}
                     placeholder="0"
                     className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
                   />
                 </div>
+                <p className="col-span-2 text-foreground/60 font-medium text-xs">
+                  Los precios de venta se redondean hacia arriba a la próxima decena y se guardan sin centavos. El costo conserva el valor exacto ingresado.
+                </p>
               </div>
               <div className="rounded-xl border border-foreground/15 bg-background/60 p-4 space-y-4">
                 <div>
@@ -697,6 +702,7 @@ export function InventarioView() {
                         const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
                         setProductModal((prev) => ({ ...prev, item: { ...prev.item, packPrice: val } }));
                       }}
+                      onBlur={(e) => setProductModal((prev) => ({ ...prev, item: { ...prev.item, packPrice: roundPriceInput(e.target.value) } }))}
                       onFocus={(e) => e.target.select()}
                       placeholder="0"
                       disabled={!(parseInt(productModal.item.unitsPerPack, 10) > 1)}
@@ -758,6 +764,11 @@ export function InventarioView() {
                             return { ...prev, item: { ...prev.item, priceTiers: next } };
                           });
                         }}
+                        onBlur={(e) => setProductModal((prev) => {
+                          const next = [...(prev.item.priceTiers || [])];
+                          next[idx] = { ...next[idx], price: roundPriceInput(e.target.value) };
+                          return { ...prev, item: { ...prev.item, priceTiers: next } };
+                        })}
                         placeholder="0"
                         className="w-full bg-surface text-foreground font-bold rounded-xl px-3 py-2.5 border border-surface focus:border-primary outline-none"
                       />

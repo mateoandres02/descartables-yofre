@@ -1,6 +1,7 @@
 import { ProductModel } from "../models/product.model.js";
 import { ProductPriceTierModel } from "../models/productPriceTier.model.js";
 import { StockModificationModel } from "../models/stockModification.model.js";
+import { roundPriceUpToTen } from "../constants.js";
 
 const VALID_ICONS = ["BookOpen", "Notebook", "PenSquare", "BookCopy", "Package"];
 
@@ -21,6 +22,18 @@ async function assertUniqueCodbarra(codbarra, excludeId = null) {
   }
 }
 
+function normalizeMoney(value, label) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw { status: 400, message: `${label} debe ser un número mayor o igual a cero.` };
+  }
+  return parsed;
+}
+
+function normalizeCatalogPrice(value, label) {
+  return roundPriceUpToTen(normalizeMoney(value, label));
+}
+
 function normalizePackFields({ unitsPerPack, packPrice }) {
   let size = parseInt(unitsPerPack, 10);
   if (!Number.isFinite(size) || size < 1) size = 1;
@@ -33,11 +46,11 @@ function normalizePackFields({ unitsPerPack, packPrice }) {
     ? null
     : Number(packPrice);
 
-    if (parsedPrice == null || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
+  if (parsedPrice == null || !Number.isFinite(parsedPrice) || parsedPrice < 0) {
     throw { status: 400, message: "Si el producto se vende por bulto, indicá cuántas unidades trae y el precio de ese bulto." };
   }
 
-  return { unitsPerPack: size, packPrice: parsedPrice };
+  return { unitsPerPack: size, packPrice: roundPriceUpToTen(parsedPrice) };
 }
 
 function normalizePriceTiers(priceTiers) {
@@ -58,7 +71,7 @@ function normalizePriceTiers(priceTiers) {
       throw { status: 400, message: `Hay dos precios para la misma cantidad (${quantity}).` };
     }
     seen.add(quantity);
-    list.push({ quantity, price });
+    list.push({ quantity, price: roundPriceUpToTen(price) });
   }
   return list.sort((a, b) => a.quantity - b.quantity);
 }
@@ -110,8 +123,8 @@ export const ProductService = {
       categoryId: categoryId || null,
       priceGroupId: priceGroupId || null,
       packTypeId: packTypeId || null,
-      cost: cost ?? 0,
-      price,
+      cost: normalizeMoney(cost ?? 0, "El costo"),
+      price: normalizeCatalogPrice(price, "El precio unitario"),
       stock: stock ?? 0,
       minStock: minStock ?? 5,
       icon: icon || "Package",
@@ -145,6 +158,14 @@ export const ProductService = {
 
     if ("packTypeId" in updates) {
       updates.packTypeId = updates.packTypeId || null;
+    }
+
+    if ("cost" in updates) {
+      updates.cost = normalizeMoney(updates.cost, "El costo");
+    }
+
+    if ("price" in updates) {
+      updates.price = normalizeCatalogPrice(updates.price, "El precio unitario");
     }
 
     const nextTiers = "priceTiers" in updates ? normalizePriceTiers(updates.priceTiers) : null;

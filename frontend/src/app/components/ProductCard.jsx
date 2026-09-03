@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { Plus, BookOpen, Notebook, PenSquare, BookCopy, Package } from "lucide-react";
 import { activeTiers, formatStock, hasPackSale, packTypeLabel } from "../../utils/pack.js";
+import { formatCatalogPrice } from "../../utils/price.js";
 
 const ICON_MAP = { BookOpen, Notebook, PenSquare, BookCopy, Package };
 
@@ -24,7 +25,7 @@ function SaleButton({ label, price, enabled, tone, onClick }) {
     >
       <span className="text-left leading-tight">
         <span className="block text-[10px] font-bold uppercase opacity-80">{label}</span>
-        <span className="block text-sm font-black">${Number(price).toFixed(2)}</span>
+        <span className="block text-sm font-black">${formatCatalogPrice(price)}</span>
       </span>
       <Plus size={16} />
     </button>
@@ -97,7 +98,7 @@ export const ProductCard = memo(function ProductCard({ product, onAddToCart }) {
         </div>
       ) : (
         <div className="flex items-center gap-3 md:gap-6 ml-2 shrink-0">
-          <span className="text-foreground font-black text-base md:text-xl">${Number(product.price).toFixed(2)}</span>
+          <span className="text-foreground font-black text-base md:text-xl">${formatCatalogPrice(product.price)}</span>
           <button
             onClick={() => canAddUnit && onAddToCart(product, "unidad")}
             disabled={!canAddUnit}

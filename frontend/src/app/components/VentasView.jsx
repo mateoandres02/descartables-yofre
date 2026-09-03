@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import api from "../../services/api.js";
 import { useBarcodeScanner } from "../hooks/useBarcodeScanner.js";
 import { hasPackSale, lineIdFor, packSizeOf, packTypeLabel, unitsEachOf, unitsInCartForProduct } from "../../utils/pack.js";
+import { formatCatalogPrice } from "../../utils/price.js";
 import { ACCOUNT_METHOD_NAME } from "../constants.js";
 import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
 
@@ -362,7 +363,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
               {totalCartItems}
             </span>
           )}
-          <span className="font-medium">${total.toFixed(2)}</span>
+          <span className="font-medium">${formatCatalogPrice(total)}</span>
         </button>
       </div>
 

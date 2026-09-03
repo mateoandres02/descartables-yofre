@@ -1,11 +1,12 @@
 import { CashRegisterService } from "../services/cashRegister.service.js";
+import { sendControllerError } from "./controllerError.js";
 
 export const CashRegisterController = {
   async getStatus(req, res) {
     try {
       res.json(await CashRegisterService.getStatus());
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -15,7 +16,7 @@ export const CashRegisterController = {
       const register = await CashRegisterService.open(req.user.id, initialCash);
       res.status(201).json(register);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -28,7 +29,7 @@ export const CashRegisterController = {
       const result = await CashRegisterService.close(registerId);
       res.json(result);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -36,7 +37,7 @@ export const CashRegisterController = {
     try {
       res.json(await CashRegisterService.getClosed());
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 };
