@@ -88,11 +88,14 @@ export default function App() {
     }
   }
 
-  async function handleCloseCaja() {
+  async function handleCloseCaja(closureData = {}) {
     if (!cajaStatus.register) return;
-    await api.post("/cash-register/close", { registerId: cajaStatus.register.id });
+    await api.post("/cash-register/close", {
+      registerId: cajaStatus.register.id,
+      ...closureData,
+    });
     // Solo actualizar el estado local DESPUÉS de confirmar que el backend cerró la caja
-    setCajaStatus({ isOpen: false, register: null });
+    setCajaStatus({ isOpen: false, register: null, suggestedInitialCash: 0 });
     setTransactions([]);
     // Resincronizar para confirmar el estado real del backend
     await fetchCajaStatus();
@@ -165,6 +168,7 @@ export default function App() {
             onOpenCaja={handleOpenCaja}
             onCloseCaja={handleCloseCaja}
             transactions={transactions}
+            suggestedInitialCash={cajaStatus.suggestedInitialCash || 0}
           />
         )}
         {activeView === "ventas" && user.role !== "creador" && (
@@ -174,6 +178,7 @@ export default function App() {
             onSyncCaja={() => fetchCajaStatus()}
             onOpenCaja={handleOpenCaja}
             role={user.role}
+            suggestedInitialCash={cajaStatus.suggestedInitialCash || 0}
           />
         )}
         {activeView === "inventario" && user.role === "admin" && <InventarioView />}
@@ -186,6 +191,7 @@ export default function App() {
             onCloseCaja={handleCloseCaja}
             transactions={transactions}
             onRefresh={fetchCajaStatus}
+            suggestedInitialCash={cajaStatus.suggestedInitialCash || 0}
           />
         )}
         {activeView === "cuentas" && user.role !== "creador" && <CuentasCorrientesView />}

@@ -89,6 +89,11 @@ export const cashRegisters = sqliteTable("cash_registers", {
   isOpen: integer("is_open", { mode: "boolean" }).notNull().default(true),
   openedAt: text("opened_at").default(sql`(datetime('now','localtime'))`),
   closedAt: text("closed_at"),
+  expectedCash: real("expected_cash"),
+  countedCash: real("counted_cash"),
+  cashDifference: real("cash_difference"),
+  arqueoNotes: text("arqueo_notes"),
+  nextInitialCash: real("next_initial_cash"),
 });
 
 // ─── Transacciones (ventas) ───────────────────────────────────────────────────

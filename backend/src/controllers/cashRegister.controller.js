@@ -22,11 +22,15 @@ export const CashRegisterController = {
 
   async close(req, res) {
     try {
-      const { registerId } = req.body;
+      const { registerId, countedCash, arqueoNotes, nextInitialCash } = req.body;
       if (!registerId) {
         return res.status(400).json({ message: "registerId es requerido." });
       }
-      const result = await CashRegisterService.close(registerId);
+      const result = await CashRegisterService.close(registerId, {
+        countedCash,
+        arqueoNotes,
+        nextInitialCash,
+      });
       res.json(result);
     } catch (err) {
       sendControllerError(res, err);

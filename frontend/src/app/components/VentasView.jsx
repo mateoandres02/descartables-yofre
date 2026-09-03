@@ -13,7 +13,9 @@ import { formatCatalogPrice } from "../../utils/price.js";
 import { ACCOUNT_METHOD_NAME } from "../constants.js";
 import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
 
-export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaja, role }) {
+import { OpenCajaModal } from "./OpenCajaModal.jsx";
+
+export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaja, role, suggestedInitialCash = 0 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [cartItems, setCartItems] = useState([]);
@@ -25,8 +27,6 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showOpenModal, setShowOpenModal] = useState(false);
-  const [openingAmount, setOpeningAmount] = useState("");
-  const [openingCaja, setOpeningCaja] = useState(false);
   const [page, setPage] = useState(1);
   const cartRef = useRef(cartItems);
   cartRef.current = cartItems;
@@ -223,18 +223,14 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     }
   };
 
-  const handleConfirmOpen = async () => {
-    if (openingCaja) return;
-    setOpeningCaja(true);
+  const handleConfirmOpen = async (amount) => {
     try {
-      await onOpenCaja(Number(openingAmount) || 0);
+      await onOpenCaja(amount);
       setShowOpenModal(false);
-      setOpeningAmount("");
       toast.success("Caja abierta exitosamente");
     } catch (err) {
       toast.error(err.response?.data?.message || "Error al abrir la caja");
-    } finally {
-      setOpeningCaja(false);
+      throw err;
     }
   };
 
@@ -401,41 +397,12 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
         />
       )}
 
-      {showOpenModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[60] p-4">
-          <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
-            <div className="p-6 border-b border-surface flex items-center justify-between">
-              <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
-                <Unlock size={24} className="text-success" /> Abrir Caja
-              </h2>
-              <button onClick={() => setShowOpenModal(false)} className="text-foreground/50 hover:text-foreground transition-colors">
-                <X size={22} />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <label className="text-foreground/80 font-medium text-sm block">Monto inicial en caja (Cambio)</label>
-              <input
-                type="number"
-                value={openingAmount}
-                onChange={(e) => setOpeningAmount(e.target.value)}
-                onFocus={(e) => e.target.select()}
-                className="w-full bg-surface text-foreground rounded-xl px-4 py-4 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none font-bold shadow-sm transition-all"
-                placeholder="0.00"
-                step="0.01"
-                min="0"
-              />
-            </div>
-            <div className="p-6 border-t border-surface flex gap-4">
-              <button onClick={() => setShowOpenModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">
-                Cancelar
-              </button>
-              <button onClick={handleConfirmOpen} disabled={openingCaja} className="flex-1 bg-success hover:brightness-125 disabled:bg-success/40 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">
-                {openingCaja ? "Abriendo..." : "Confirmar Apertura"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <OpenCajaModal
+        isOpen={showOpenModal}
+        onClose={() => setShowOpenModal(false)}
+        onConfirm={handleConfirmOpen}
+        suggestedAmount={suggestedInitialCash}
+      />
     </div>
   );
 }

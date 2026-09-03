@@ -57,6 +57,16 @@ const migrations = [
        END`,
     ],
   },
+  {
+    id: "20260903_003_cash_register_arqueo",
+    statements: [
+      "ALTER TABLE cash_registers ADD COLUMN expected_cash REAL",
+      "ALTER TABLE cash_registers ADD COLUMN counted_cash REAL",
+      "ALTER TABLE cash_registers ADD COLUMN cash_difference REAL",
+      "ALTER TABLE cash_registers ADD COLUMN arqueo_notes TEXT",
+      "ALTER TABLE cash_registers ADD COLUMN next_initial_cash REAL",
+    ],
+  },
 ];
 
 function quoteIdentifier(identifier) {
