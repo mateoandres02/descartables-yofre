@@ -1,11 +1,12 @@
 import { PackTypeService } from "../services/packType.service.js";
+import { sendControllerError } from "./controllerError.js";
 
 export const PackTypeController = {
   async getAll(req, res) {
     try {
       res.json(await PackTypeService.getAll());
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -14,7 +15,7 @@ export const PackTypeController = {
       const created = await PackTypeService.create(req.body);
       res.status(201).json(created);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -22,7 +23,7 @@ export const PackTypeController = {
     try {
       res.json(await PackTypeService.update(req.params.id, req.body));
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -30,7 +31,7 @@ export const PackTypeController = {
     try {
       res.json(await PackTypeService.remove(req.params.id));
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 };

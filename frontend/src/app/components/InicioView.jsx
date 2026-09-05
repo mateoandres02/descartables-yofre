@@ -4,11 +4,13 @@ import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
 import { formatStock } from "../../utils/pack.js";
+import { ACCOUNT_METHOD_NAME } from "../constants.js";
+import { ClosureModal } from "./ClosureModal.jsx";
+import { OpenCajaModal } from "./OpenCajaModal.jsx";
 
-export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }) {
+export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions, suggestedInitialCash = 0 }) {
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showClosureModal, setShowClosureModal] = useState(false);
-  const [openingAmount, setOpeningAmount] = useState("");
   const [expenses, setExpenses] = useState([]);
   const [systemLog, setSystemLog] = useState([]);
   const [products, setProducts] = useState([]);
@@ -18,6 +20,10 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
   const [submittingWithdraw, setSubmittingWithdraw] = useState(false);
   const [searchWithdraw, setSearchWithdraw] = useState("");
   const [loading, setLoading] = useState(true);
+
+  const [registerData, setRegisterData] = useState(null);
+  const [gastosEfectivo, setGastosEfectivo] = useState(0);
+  const [cobrosCuenta, setCobrosCuenta] = useState([]);
 
   const LOG_ICONS = {
     Unlock,
@@ -43,6 +49,54 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    if (isCajaOpen) {
+      api.get("/cash-register/status")
+        .then((r) => {
+          if (r.data?.register) {
+            setRegisterData(r.data.register);
+            api.get("/daily-expenses")
+              .then((eRes) => {
+                const total = eRes.data
+                  .filter((g) => g.registerId === r.data.register.id && g.method === "efectivo")
+                  .reduce((sum, g) => sum + Number(g.amount), 0);
+                setGastosEfectivo(total);
+              })
+              .catch(() => setGastosEfectivo(0));
+
+            api.get(`/customers/payments/register/${r.data.register.id}`)
+              .then((pRes) => setCobrosCuenta(pRes.data))
+              .catch(() => setCobrosCuenta([]));
+          }
+        })
+        .catch(() => {});
+    } else {
+      setRegisterData(null);
+      setGastosEfectivo(0);
+      setCobrosCuenta([]);
+    }
+  }, [isCajaOpen, transactions]);
+
+  const isAccount = (method) => String(method || "").trim().toLowerCase() === ACCOUNT_METHOD_NAME.toLowerCase();
+  const isCash = (method) => String(method || "").toLowerCase().includes("efectivo");
+
+  const cobrosCuentaEfectivo = cobrosCuenta
+    .filter((c) => isCash(c.methodName))
+    .reduce((sum, c) => sum + Number(c.amount), 0);
+  const cobrosCuentaVirtual = cobrosCuenta
+    .filter((c) => !isCash(c.methodName))
+    .reduce((sum, c) => sum + Number(c.amount), 0);
+
+  const totalIngresos = transactions.reduce((sum, t) => sum + t.total, 0);
+  const totalEfectivo = transactions.reduce((sum, t) =>
+    sum + t.payments.filter((p) => !isAccount(p.type) && isCash(p.type)).reduce((s, p) => s + p.amount, 0), 0
+  ) + cobrosCuentaEfectivo;
+  const totalTransferencia = transactions.reduce((sum, t) =>
+    sum + t.payments.filter((p) => !isAccount(p.type) && !isCash(p.type)).reduce((s, p) => s + p.amount, 0), 0
+  ) + cobrosCuentaVirtual;
+
+  const initialCash = registerData?.initialCash || 0;
+
   const recentSales = transactions.slice(0, 5).map((t) => ({
     id: t.id,
     time: t.time,
@@ -54,24 +108,25 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
   const ventasHoy = isCajaOpen ? transactions.reduce((sum, t) => sum + t.total, 0) : 0;
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-  const handleConfirmOpen = async () => {
+  const handleConfirmOpen = async (amount) => {
     try {
-      await onOpenCaja(Number(openingAmount) || 0);
+      await onOpenCaja(amount);
       setShowOpenModal(false);
-      setOpeningAmount("0");
       toast.success("Caja abierta exitosamente");
     } catch (err) {
       toast.error(err.response?.data?.message || "Error al abrir caja");
+      throw err;
     }
   };
 
-  const handleConfirmClose = async () => {
+  const handleConfirmClose = async (closureData) => {
     try {
-      await onCloseCaja();
+      await onCloseCaja(closureData);
       setShowClosureModal(false);
-      toast.success("Caja cerrada exitosamente");
+      toast.success("Caja cerrada exitosamente con arqueo");
     } catch (err) {
       toast.error(err.response?.data?.message || "Error al cerrar caja");
+      throw err;
     }
   };
 
@@ -246,40 +301,23 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions }
         </div>
       </div>
 
-      {showOpenModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
-            <div className="p-6 border-b border-surface">
-              <h2 className="text-primary font-bold text-2xl flex items-center gap-2"><Unlock size={24} className="text-success" /> Abrir Caja</h2>
-            </div>
-            <div className="p-6 space-y-4">
-              <label className="text-foreground/80 font-medium text-sm block">Monto inicial en caja (Cambio)</label>
-              <input type="number" value={openingAmount} onChange={(e) => setOpeningAmount(e.target.value)} onFocus={(e) => e.target.select()} className="w-full bg-surface text-foreground rounded-xl px-4 py-4 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none font-bold shadow-sm" placeholder="0.00" step="0.01" min="0" />
-            </div>
-            <div className="p-6 border-t border-surface flex gap-4">
-              <button onClick={() => setShowOpenModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleConfirmOpen} className="flex-1 bg-success hover:brightness-125 text-foreground py-4 rounded-xl transition-all">Confirmar Apertura</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ClosureModal
+        isOpen={showClosureModal}
+        onClose={() => setShowClosureModal(false)}
+        onConfirm={handleConfirmClose}
+        initialCash={initialCash}
+        cashSales={totalEfectivo}
+        cashExpenses={gastosEfectivo}
+        otherPayments={totalTransferencia}
+        totalSales={totalIngresos}
+      />
 
-      {showClosureModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
-            <div className="p-6 border-b border-surface">
-              <h2 className="text-primary font-bold text-2xl flex items-center gap-2"><Lock size={24} className="text-foreground" /> Cierre de Caja</h2>
-            </div>
-            <div className="p-6">
-              <p className="text-foreground/80 font-medium">¿Estás seguro que deseas cerrar la caja? Para ver el resumen detallado dirígete a la pestaña "Caja".</p>
-            </div>
-            <div className="p-6 border-t border-surface flex gap-4">
-              <button onClick={() => setShowClosureModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleConfirmClose} className="flex-1 bg-secondary hover:brightness-125 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Cierre</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <OpenCajaModal
+        isOpen={showOpenModal}
+        onClose={() => setShowOpenModal(false)}
+        onConfirm={handleConfirmOpen}
+        suggestedAmount={suggestedInitialCash}
+      />
 
       {showWithdrawModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">

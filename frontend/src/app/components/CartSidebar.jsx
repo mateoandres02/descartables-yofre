@@ -1,5 +1,6 @@
 import { Plus, Minus, Trash2, CreditCard, X } from "lucide-react";
 import { maxQuantityForLine, saleLabel } from "../../utils/pack.js";
+import { formatCatalogPrice } from "../../utils/price.js";
 
 export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout, isMobileOpen, onMobileClose }) {
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -21,7 +22,7 @@ export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout,
               <div className="flex-1 mr-2">
                 <h4 className="text-primary font-bold text-sm leading-snug">{item.name}</h4>
                 <p className="text-foreground/70 mt-0.5 text-xs font-bold">{saleLabel(item)}</p>
-                <p className="text-foreground/80 mt-1 text-sm font-medium">${Number(item.price).toFixed(2)}</p>
+                <p className="text-foreground/80 mt-1 text-sm font-medium">${formatCatalogPrice(item.price)}</p>
               </div>
               <button onClick={() => onRemoveItem(item.lineId)} className="text-foreground/50 hover:text-foreground transition-colors shrink-0">
                 <Trash2 size={18} />
@@ -46,7 +47,7 @@ export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout,
                 </button>
               </div>
               <div className="text-right">
-                <span className="text-foreground font-black block text-sm">${(item.price * item.quantity).toFixed(2)}</span>
+                <span className="text-foreground font-black block text-sm">${formatCatalogPrice(item.price * item.quantity)}</span>
                 {item.stock != null && item.stock <= 5 && (
                   <span className="text-primary font-bold text-xs">Stock: {item.stock} u.</span>
                 )}
@@ -63,7 +64,7 @@ export function CartSidebar({ items, onUpdateQuantity, onRemoveItem, onCheckout,
     <div className="p-4 md:p-6 border-t border-foreground/15 space-y-3">
       <div className="flex items-center justify-between text-lg md:text-xl">
         <span className="text-foreground/80 font-medium">Total:</span>
-        <span className="text-foreground font-black">${total.toFixed(2)}</span>
+        <span className="text-foreground font-black">${formatCatalogPrice(total)}</span>
       </div>
       <button
         onClick={onCheckout}

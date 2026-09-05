@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
 import { client } from "../client.js";
+import { roundPriceUpToTen } from "../../constants.js";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
@@ -42,7 +43,7 @@ function numberOrNull(value) {
 
 function positivePrice(value) {
   const parsed = numberOrNull(value);
-  return parsed !== null && parsed > 0 ? Math.round(parsed * 100) / 100 : null;
+  return parsed !== null && parsed > 0 ? roundPriceUpToTen(parsed) : null;
 }
 
 function positiveQuantity(value) {

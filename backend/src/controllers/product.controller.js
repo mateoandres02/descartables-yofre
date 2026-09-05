@@ -1,4 +1,5 @@
 import { ProductService } from "../services/product.service.js";
+import { sendControllerError } from "./controllerError.js";
 
 export const ProductController = {
   async getAll(req, res) {
@@ -6,7 +7,7 @@ export const ProductController = {
       const products = await ProductService.getAll();
       res.json(products);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -15,7 +16,7 @@ export const ProductController = {
       const product = await ProductService.getByCodbarra(req.params.codbarra);
       res.json(product);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -24,7 +25,7 @@ export const ProductController = {
       const product = await ProductService.create(req.body);
       res.status(201).json(product);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -33,7 +34,7 @@ export const ProductController = {
       const product = await ProductService.update(req.params.id, req.body);
       res.json(product);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -42,7 +43,7 @@ export const ProductController = {
       const result = await ProductService.remove(req.params.id);
       res.json(result);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -50,7 +51,7 @@ export const ProductController = {
     try {
       res.json(await ProductService.bulkAssign(req.body));
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 };

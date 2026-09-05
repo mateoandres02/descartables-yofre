@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { cashRegisters } from "../db/schema.js";
 
@@ -27,6 +27,16 @@ export const CashRegisterModel = {
       .orderBy(desc(cashRegisters.closedAt));
   },
 
+  findLastClosed() {
+    return db
+      .select()
+      .from(cashRegisters)
+      .where(eq(cashRegisters.isOpen, false))
+      .orderBy(desc(cashRegisters.closedAt), desc(cashRegisters.id))
+      .limit(1)
+      .then((r) => r[0] || null);
+  },
+
   findAll() {
     return db.select().from(cashRegisters).orderBy(desc(cashRegisters.openedAt));
   },
@@ -42,5 +52,14 @@ export const CashRegisterModel = {
       .where(eq(cashRegisters.id, id))
       .returning()
       .then((r) => r[0]);
+  },
+
+  closeAtomically(id, data) {
+    return db
+      .update(cashRegisters)
+      .set(data)
+      .where(and(eq(cashRegisters.id, id), eq(cashRegisters.isOpen, true)))
+      .returning()
+      .then((r) => r[0] || null);
   },
 };

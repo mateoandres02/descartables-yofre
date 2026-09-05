@@ -3,7 +3,7 @@ import { TransactionModel } from "../models/transaction.model.js";
 import { DailyExpenseModel } from "../models/dailyExpense.model.js";
 import { AccountMovementModel } from "../models/accountMovement.model.js";
 import { getArgentinaTime } from "../db/timeUtils.js";
-import { isAccountMethod, isCashMethod } from "../constants.js";
+import { isAccountMethod, isCashMethod, round2 } from "../constants.js";
 
 function buildClosedRegisterSummary(
   register,
@@ -61,11 +61,18 @@ function buildClosedRegisterSummary(
     .filter((e) => e.method === "efectivo")
     .reduce((sum, e) => sum + e.amount, 0);
 
+  const calculatedCashBalance = round2(register.initialCash + totalEfectivo - totalGastosEfectivo);
+
   return {
     id: register.id,
     openedAt: register.openedAt,
     closedAt: register.closedAt,
     initialCash: register.initialCash,
+    expectedCash: register.expectedCash !== null && register.expectedCash !== undefined ? register.expectedCash : calculatedCashBalance,
+    countedCash: register.countedCash ?? null,
+    cashDifference: register.cashDifference ?? null,
+    arqueoNotes: register.arqueoNotes ?? null,
+    nextInitialCash: register.nextInitialCash ?? null,
     transactionsCount: txs.length,
     totalIngresos,
     totalEfectivo,
@@ -86,21 +93,29 @@ function buildClosedRegisterSummary(
       createdAt: e.createdAt,
     })),
     totalGastosEfectivo,
-    cashBalance: register.initialCash + totalEfectivo - totalGastosEfectivo,
+    cashBalance: calculatedCashBalance,
   };
 }
 
 export const CashRegisterService = {
   async getStatus() {
     const register = await CashRegisterModel.findOpen();
-    return { isOpen: !!register, register: register || null };
+    const lastClosed = await CashRegisterModel.findLastClosed();
+    const suggestedInitialCash = lastClosed
+      ? (lastClosed.nextInitialCash ?? lastClosed.countedCash ?? lastClosed.initialCash ?? 0)
+      : 0;
+    return { isOpen: !!register, register: register || null, suggestedInitialCash };
   },
 
   async open(userId, initialCash) {
     const existing = await CashRegisterModel.findOpen();
     if (existing) throw { status: 409, message: "Ya hay una caja abierta." };
 
-    const amount = Number(initialCash) || 0;
+    const amount = Number(initialCash);
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw { status: 400, message: "El monto inicial debe ser un número mayor o igual a 0." };
+    }
+
     const { datetime } = getArgentinaTime();
     const register = await CashRegisterModel.create({
       openedBy: userId,
@@ -111,14 +126,75 @@ export const CashRegisterService = {
     return register;
   },
 
-  async close(registerId) {
+  async close(registerId, { countedCash, arqueoNotes, nextInitialCash } = {}) {
     const register = await CashRegisterModel.findById(registerId);
     if (!register) throw { status: 404, message: "Caja no encontrada." };
     if (!register.isOpen) throw { status: 400, message: "La caja ya está cerrada." };
 
+    const counted = Number(countedCash);
+    if (
+      countedCash === undefined ||
+      countedCash === null ||
+      String(countedCash).trim() === "" ||
+      !Number.isFinite(counted) ||
+      counted < 0
+    ) {
+      throw { status: 400, message: "El efectivo contado es obligatorio y debe ser un número mayor o igual a 0." };
+    }
+
+    const nextInitial =
+      nextInitialCash !== undefined && nextInitialCash !== null && String(nextInitialCash).trim() !== ""
+        ? Number(nextInitialCash)
+        : counted;
+
+    if (!Number.isFinite(nextInitial) || nextInitial < 0) {
+      throw { status: 400, message: "El fondo para la próxima apertura debe ser un número mayor o igual a 0." };
+    }
+
+    // Recalcular expectedCash en el backend usando datos persistidos
+    const txs = await TransactionModel.findByRegisterId(register.id);
+    const allPayments = [];
+    for (const tx of txs) {
+      const payments = await TransactionModel.findPaymentsByTransactionId(tx.id);
+      allPayments.push(...payments);
+    }
+    const dailyExpenses = await DailyExpenseModel.findByRegisterId(register.id);
+    const accountPayments = await AccountMovementModel.findPaymentsByRegisterId(register.id);
+
+    const cobrados = allPayments.filter((p) => !isAccountMethod(p.methodName));
+    const cobrosEfectivo = accountPayments
+      .filter((p) => isCashMethod(p.methodName))
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    const totalEfectivo =
+      cobrados.filter((p) => isCashMethod(p.methodName)).reduce((sum, p) => sum + p.amount, 0) +
+      cobrosEfectivo;
+
+    const totalGastosEfectivo = dailyExpenses
+      .filter((e) => e.method === "efectivo")
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    const expectedCash = round2(register.initialCash + totalEfectivo - totalGastosEfectivo);
+    const cashDifference = round2(counted - expectedCash);
+    const notes = arqueoNotes ? String(arqueoNotes).trim() : null;
+
     const { datetime: closedAt } = getArgentinaTime();
-    await CashRegisterModel.update(registerId, { isOpen: false, closedAt });
-    return { message: "Caja cerrada correctamente." };
+
+    const updated = await CashRegisterModel.closeAtomically(registerId, {
+      isOpen: false,
+      closedAt,
+      expectedCash,
+      countedCash: counted,
+      cashDifference,
+      arqueoNotes: notes,
+      nextInitialCash: nextInitial,
+    });
+
+    if (!updated) {
+      throw { status: 400, message: "La caja ya fue cerrada o no se encuentra disponible." };
+    }
+
+    return { message: "Caja cerrada correctamente.", register: updated };
   },
 
   async getClosed() {

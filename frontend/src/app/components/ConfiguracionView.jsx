@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Eye, EyeOff, Bookmark, Layers, Percent, Package } from "lucide-react";
+import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Bookmark, Layers, Percent, Package } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
@@ -42,7 +42,7 @@ function PriceGroupPanel({ title, hint, type, icon: Icon, groups, onReload }) {
   const [nameModal, setNameModal] = useState({ isOpen: false, item: null });
   const [increaseModal, setIncreaseModal] = useState(null);
   const [percent, setPercent] = useState("");
-  const [updateCost, setUpdateCost] = useState(true);
+  const [updateCost, setUpdateCost] = useState(false);
   const [saving, setSaving] = useState(false);
   const noun = type === "proveedor" ? "proveedor" : "colección";
 
@@ -94,7 +94,7 @@ function PriceGroupPanel({ title, hint, type, icon: Icon, groups, onReload }) {
       toast.success(`Aumento del ${value}% aplicado a ${data.updatedCount} productos`);
       setIncreaseModal(null);
       setPercent("");
-      setUpdateCost(true);
+      setUpdateCost(false);
       onReload();
     } catch (err) {
       toast.error(err.response?.data?.message || "Error al aplicar el aumento");
@@ -138,7 +138,7 @@ function PriceGroupPanel({ title, hint, type, icon: Icon, groups, onReload }) {
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <button
-                  onClick={() => { setIncreaseModal(group); setPercent(""); setUpdateCost(true); }}
+                  onClick={() => { setIncreaseModal(group); setPercent(""); setUpdateCost(false); }}
                   className="flex items-center gap-1.5 bg-secondary text-foreground font-bold text-xs px-3 py-2 rounded-lg hover:brightness-125 transition-colors"
                 >
                   <Percent size={14} /> Aplicar aumento
@@ -227,7 +227,6 @@ export function ConfiguracionView() {
   const [expenseModal, setExpenseModal] = useState({ isOpen: false, item: null });
   const [categoryModal, setCategoryModal] = useState({ isOpen: false, item: null });
   const [submitting, setSubmitting] = useState(false);
-  const [showGastos, setShowGastos] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleteExpenseConfirm, setDeleteExpenseConfirm] = useState(null);
   const [brands, setBrands] = useState([]);
@@ -444,9 +443,6 @@ export function ConfiguracionView() {
             <div className="flex items-center gap-3">
               <Receipt className="text-primary" size={24} />
               <h2 className="text-primary text-xl font-bold">Gastos Fijos</h2>
-              <button onClick={() => setShowGastos((v) => !v)} title={showGastos ? "Ocultar montos" : "Mostrar montos"} className="text-foreground/40 hover:text-foreground transition-colors">
-                {showGastos ? <Eye size={16} /> : <EyeOff size={16} />}
-              </button>
             </div>
             <button onClick={() => setExpenseModal({ isOpen: true, item: { name: "", amount: "" } })} className="text-foreground hover:text-foreground hover:bg-secondary transition-colors p-2 bg-elevated rounded-lg shadow-sm font-bold">
               <Plus size={20} />
@@ -459,9 +455,7 @@ export function ConfiguracionView() {
               <div key={expense.id} className="flex gap-4 items-center bg-elevated p-4 rounded-xl border border-foreground/15 shadow-sm">
                 <div className="flex-1"><span className="text-foreground font-bold">{expense.name}</span></div>
                 <div className="w-40 text-right font-black">
-                  {showGastos
-                    ? <span className="text-foreground/80">${Number(expense.amount).toFixed(2)}</span>
-                    : <span className="text-foreground/30 tracking-widest select-none">••••</span>}
+                  <span className="text-foreground/80">${Number(expense.amount).toFixed(2)}</span>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => setExpenseModal({ isOpen: true, item: { ...expense, amount: expense.amount === 0 ? "" : String(expense.amount) } })} className="text-primary hover:text-secondary p-2 transition-colors"><Edit2 size={20} /></button>

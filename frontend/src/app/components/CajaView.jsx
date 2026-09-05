@@ -1,14 +1,15 @@
 import { useState, useEffect, Fragment } from "react";
-import { Lock, Calendar, Clock, Unlock, Eye, EyeOff, Banknote } from "lucide-react";
+import { Lock, Calendar, Clock, Unlock, Eye, EyeOff, Banknote, Calculator, FileText, CheckCircle2, TrendingUp, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
 import { ACCOUNT_METHOD_NAME } from "../constants.js";
+import { ClosureModal } from "./ClosureModal.jsx";
+import { OpenCajaModal } from "./OpenCajaModal.jsx";
 
-export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onCloseCaja, transactions, onRefresh }) {
+export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onCloseCaja, transactions, onRefresh, suggestedInitialCash = 0 }) {
   const [showClosureModal, setShowClosureModal] = useState(false);
   const [showOpenModal, setShowOpenModal] = useState(false);
-  const [openingAmount, setOpeningAmount] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -71,23 +72,28 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
     sum + t.payments.filter((p) => !isAccount(p.type) && !isCash(p.type)).reduce((s, p) => s + p.amount, 0), 0
   ) + cobrosCuentaVirtual;
 
-  const handleCloseCaja = async () => {
+  const handleCloseCaja = async (closureData) => {
     try {
-      await onCloseCaja();
+      await onCloseCaja(closureData);
       setShowClosureModal(false);
-      toast.success("Caja cerrada exitosamente", { description: `Total del día: $${totalIngresos.toFixed(2)}` });
+      toast.success("Caja cerrada exitosamente con arqueo");
       const r = await api.get("/cash-register/closed");
       setCajasCerradas(r.data);
-    } catch (err) { toast.error(err.response?.data?.message || "Error al cerrar caja"); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error al cerrar caja");
+      throw err;
+    }
   };
 
-  const handleConfirmOpen = async () => {
+  const handleConfirmOpen = async (amount) => {
     try {
-      await onOpenCaja(Number(openingAmount) || 0);
+      await onOpenCaja(amount);
       setShowOpenModal(false);
-      setOpeningAmount("0");
       toast.success("Caja abierta exitosamente");
-    } catch (err) { toast.error(err.response?.data?.message || "Error al abrir caja"); }
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Error al abrir caja");
+      throw err;
+    }
   };
 
   const filteredCajas = cajasCerradas.filter((c) => {
@@ -174,7 +180,7 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
                 <Banknote size={24} className="text-foreground" />
               </div>
               <div>
-                <p className="text-foreground font-bold text-base">Efectivo en caja al cierre del día</p>
+                <p className="text-foreground font-bold text-base">Efectivo esperado en caja al cierre del día</p>
                 <p className="text-foreground/60 text-xs font-medium mt-0.5">
                   Fondo inicial ${initialCash.toFixed(2)} + cobrado ${totalEfectivo.toFixed(2)}
                   {gastosEfectivo > 0 && ` − gastos $${gastosEfectivo.toFixed(2)}`}
@@ -292,6 +298,53 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
                                 </div>
                               ))}
                             </div>
+
+                            {/* Arqueo al cierre */}
+                            {caja.expectedCash !== null && caja.expectedCash !== undefined && (
+                              <div className="mt-6 bg-surface p-5 rounded-xl border border-foreground/15 shadow-sm space-y-4">
+                                <h5 className="text-primary font-bold text-base flex items-center gap-2">
+                                  <Calculator size={20} /> Resultante del Arqueo de Caja
+                                </h5>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                  <div className="bg-background p-4 rounded-lg border border-foreground/15">
+                                    <p className="text-foreground/70 text-xs font-medium mb-1">Efectivo Esperado</p>
+                                    <p className="text-primary font-black text-lg">${Number(caja.expectedCash).toFixed(2)}</p>
+                                  </div>
+                                  <div className="bg-background p-4 rounded-lg border border-foreground/15">
+                                    <p className="text-foreground/70 text-xs font-medium mb-1">Efectivo Contado</p>
+                                    <p className="text-foreground font-black text-lg">${Number(caja.countedCash ?? 0).toFixed(2)}</p>
+                                  </div>
+                                  <div className="bg-background p-4 rounded-lg border border-foreground/15">
+                                    <p className="text-foreground/70 text-xs font-medium mb-1">Diferencia</p>
+                                    {Math.abs(Number(caja.cashDifference || 0)) < 0.001 ? (
+                                      <span className="text-success font-black text-lg flex items-center gap-1">
+                                        <CheckCircle2 size={16} /> Caja correcta
+                                      </span>
+                                    ) : Number(caja.cashDifference) > 0 ? (
+                                      <span className="text-blue-400 font-black text-lg flex items-center gap-1">
+                                        <TrendingUp size={16} /> Sobrante (+${Number(caja.cashDifference).toFixed(2)})
+                                      </span>
+                                    ) : (
+                                      <span className="text-red-500 font-black text-lg flex items-center gap-1">
+                                        <AlertTriangle size={16} /> Faltante (-${Math.abs(Number(caja.cashDifference)).toFixed(2)})
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="bg-background p-4 rounded-lg border border-foreground/15">
+                                    <p className="text-foreground/70 text-xs font-medium mb-1">Fondo Próxima Apertura</p>
+                                    <p className="text-foreground font-black text-lg">${Number(caja.nextInitialCash ?? caja.countedCash ?? 0).toFixed(2)}</p>
+                                  </div>
+                                </div>
+                                {caja.arqueoNotes && (
+                                  <div className="bg-background p-3.5 rounded-lg border border-foreground/15 text-sm">
+                                    <span className="font-bold text-foreground flex items-center gap-1.5 mb-1">
+                                      <FileText size={16} className="text-primary" /> Observaciones del arqueo:
+                                    </span>
+                                    <p className="text-foreground/80 font-medium italic">{caja.arqueoNotes}</p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
 
                             {/* Desglose de recargos */}
                             {caja.surchargeBreakdown && caja.surchargeBreakdown.length > 0 && (
@@ -444,54 +497,24 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
         </>
       )}
 
-      {showClosureModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl w-full max-w-2xl border border-surface shadow-2xl">
-            <div className="p-6 border-b border-surface"><h2 className="text-primary font-bold text-2xl">Cierre de Caja</h2></div>
-            <div className="p-6 space-y-6">
-              <div className="bg-surface rounded-xl p-6 space-y-4 shadow-sm">
-                {[
-                  { label: "Fecha:", value: new Date().toLocaleDateString("es-AR", { day: "numeric", month: "long", year: "numeric" }) },
-                  { label: "Transacciones:", value: transactions.length },
-                  { label: "Fondo Inicial:", value: `$${initialCash.toFixed(2)}` },
-                  { label: "Efectivo Cobrado (Ventas):", value: `$${totalEfectivo.toFixed(2)}`, color: "text-success" },
-                  { label: "Efectivo Total en Caja:", value: `$${(totalEfectivo + initialCash).toFixed(2)}`, color: "text-success" },
-                  { label: "Transferencias / Otros:", value: `$${totalTransferencia.toFixed(2)}`, color: "text-primary" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} className="flex items-center justify-between pb-4 border-b border-foreground/15">
-                    <span className="text-foreground/80 font-medium">{label}</span>
-                    <span className={`font-bold ${color || "text-foreground"}`}>{value}</span>
-                  </div>
-                ))}
-                <div className="flex items-center justify-between pt-2">
-                  <span className="text-foreground font-bold text-xl">Total del Día:</span>
-                  <span className="text-foreground text-3xl font-black">${totalIngresos.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-            <div className="p-6 border-t border-surface flex gap-4">
-              <button onClick={() => setShowClosureModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleCloseCaja} className="flex-1 bg-secondary hover:brightness-125 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Cierre</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ClosureModal
+        isOpen={showClosureModal}
+        onClose={() => setShowClosureModal(false)}
+        onConfirm={handleCloseCaja}
+        initialCash={initialCash}
+        cashSales={totalEfectivo}
+        cashExpenses={gastosEfectivo}
+        otherPayments={totalTransferencia}
+        totalSales={totalIngresos}
+      />
 
-      {showOpenModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
-            <div className="p-6 border-b border-surface"><h2 className="text-primary font-bold text-2xl flex items-center gap-2"><Unlock size={24} className="text-success" /> Abrir Caja</h2></div>
-            <div className="p-6 space-y-4">
-              <label className="text-foreground/80 font-medium text-sm block">Monto inicial en caja (Cambio)</label>
-              <input type="number" value={openingAmount} onChange={(e) => setOpeningAmount(e.target.value)} onFocus={(e) => e.target.select()} className="w-full bg-surface text-foreground rounded-xl px-4 py-4 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none font-bold shadow-sm transition-all" placeholder="0.00" step="0.01" min="0" />
-            </div>
-            <div className="p-6 border-t border-surface flex gap-4">
-              <button onClick={() => setShowOpenModal(false)} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
-              <button onClick={handleConfirmOpen} className="flex-1 bg-success hover:brightness-125 text-foreground font-bold py-4 rounded-xl transition-all shadow-md">Confirmar Apertura</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <OpenCajaModal
+        isOpen={showOpenModal}
+        onClose={() => setShowOpenModal(false)}
+        onConfirm={handleConfirmOpen}
+        suggestedAmount={suggestedInitialCash}
+      />
     </div>
   );
 }
+

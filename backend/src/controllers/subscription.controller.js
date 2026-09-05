@@ -1,4 +1,5 @@
 import { SubscriptionService } from "../services/subscription.service.js";
+import { sendControllerError } from "./controllerError.js";
 
 export const SubscriptionController = {
   async getStatus(req, res) {
@@ -6,7 +7,7 @@ export const SubscriptionController = {
       const status = await SubscriptionService.getStatus();
       res.json(status);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -16,7 +17,7 @@ export const SubscriptionController = {
       const result = await SubscriptionService.setCutoffDay(cutoffDay);
       res.json(result);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -25,7 +26,7 @@ export const SubscriptionController = {
       const result = await SubscriptionService.reactivate();
       res.json(result);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 };

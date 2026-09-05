@@ -1,11 +1,12 @@
 import { DailyExpenseService } from "../services/dailyExpense.service.js";
+import { sendControllerError } from "./controllerError.js";
 
 export const DailyExpenseController = {
   async getAll(req, res) {
     try {
       res.json(await DailyExpenseService.getAll());
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -14,7 +15,7 @@ export const DailyExpenseController = {
       const created = await DailyExpenseService.create(req.body);
       res.status(201).json(created);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 };

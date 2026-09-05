@@ -1,4 +1,5 @@
 import { TransactionService } from "../services/transaction.service.js";
+import { sendControllerError } from "./controllerError.js";
 
 export const TransactionController = {
   async create(req, res) {
@@ -6,7 +7,7 @@ export const TransactionController = {
       const result = await TransactionService.create(req.body, req.user.id);
       res.status(201).json(result);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 
@@ -16,7 +17,7 @@ export const TransactionController = {
       const result = await TransactionService.getByRegisterId(Number(registerId));
       res.json(result);
     } catch (err) {
-      res.status(err.status || 500).json({ message: err.message || "Error interno." });
+      sendControllerError(res, err);
     }
   },
 };
