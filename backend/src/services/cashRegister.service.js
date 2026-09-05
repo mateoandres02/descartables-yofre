@@ -5,6 +5,11 @@ import { AccountMovementModel } from "../models/accountMovement.model.js";
 import { getArgentinaTime } from "../db/timeUtils.js";
 import { isAccountMethod, isCashMethod, round2 } from "../constants.js";
 
+function isOpenRegisterConflict(error) {
+  const message = String(error?.message || "");
+  return message.includes("cash_registers_single_open_idx") || message.includes("cash_registers.is_open");
+}
+
 function buildClosedRegisterSummary(
   register,
   txs,
@@ -117,13 +122,19 @@ export const CashRegisterService = {
     }
 
     const { datetime } = getArgentinaTime();
-    const register = await CashRegisterModel.create({
-      openedBy: userId,
-      initialCash: amount,
-      isOpen: true,
-      openedAt: datetime,
-    });
-    return register;
+    try {
+      return await CashRegisterModel.create({
+        openedBy: userId,
+        initialCash: amount,
+        isOpen: true,
+        openedAt: datetime,
+      });
+    } catch (error) {
+      if (isOpenRegisterConflict(error)) {
+        throw { status: 409, message: "Ya hay una caja abierta." };
+      }
+      throw error;
+    }
   },
 
   async close(registerId, { countedCash, arqueoNotes, nextInitialCash } = {}) {
@@ -205,26 +216,46 @@ export const CashRegisterService = {
       const txs = await TransactionModel.findByRegisterId(register.id);
       const allPayments = [];
       const allItems = [];
+      const detailedTransactions = [];
 
       for (const tx of txs) {
         const payments = await TransactionModel.findPaymentsByTransactionId(tx.id);
         const items = await TransactionModel.findItemsByTransactionId(tx.id);
         allPayments.push(...payments);
         allItems.push(...items);
+        detailedTransactions.push({
+          id: tx.id,
+          date: tx.date,
+          time: tx.time,
+          total: tx.total,
+          payments: payments.map((payment) => ({
+            methodName: payment.methodName,
+            amount: payment.amount,
+          })),
+          items: items.map((item) => ({
+            productName: item.productName,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.total,
+            saleMode: item.saleMode,
+            packSize: item.packSize,
+          })),
+        });
       }
 
       const dailyExpenses = await DailyExpenseModel.findByRegisterId(register.id);
       const accountPayments = await AccountMovementModel.findPaymentsByRegisterId(register.id);
-      result.push(
-        buildClosedRegisterSummary(
+      result.push({
+        ...buildClosedRegisterSummary(
           register,
           txs,
           allPayments,
           allItems,
           dailyExpenses,
           accountPayments
-        )
-      );
+        ),
+        transactions: detailedTransactions,
+      });
     }
 
     return result;

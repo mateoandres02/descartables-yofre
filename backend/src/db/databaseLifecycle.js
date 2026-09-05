@@ -67,6 +67,14 @@ const migrations = [
       "ALTER TABLE cash_registers ADD COLUMN next_initial_cash REAL",
     ],
   },
+  {
+    id: "20260905_004_single_open_cash_register",
+    statements: [
+      // Una restricción en la base evita aperturas duplicadas por doble clic o
+      // por solicitudes concurrentes desde distintas sesiones.
+      "CREATE UNIQUE INDEX IF NOT EXISTS cash_registers_single_open_idx ON cash_registers (is_open) WHERE is_open = 1",
+    ],
+  },
 ];
 
 function quoteIdentifier(identifier) {

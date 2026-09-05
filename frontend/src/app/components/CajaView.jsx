@@ -347,8 +347,8 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
                             )}
 
                             {/* Desglose de recargos */}
-                            {caja.surchargeBreakdown && caja.surchargeBreakdown.length > 0 && (
-                              <div className="mt-4 bg-primary/20 border border-primary/40 rounded-lg p-4 shadow-sm">
+                             {caja.surchargeBreakdown && caja.surchargeBreakdown.length > 0 && (
+                               <div className="mt-4 bg-primary/20 border border-primary/40 rounded-lg p-4 shadow-sm">
                                 <p className="text-foreground font-bold mb-2">Recargos aplicados</p>
                                 <div className="space-y-1">
                                   {caja.surchargeBreakdown.map((s, idx) => (
@@ -361,6 +361,67 @@ export function CajaView({ role = "admin", isCajaOpen, register, onOpenCaja, onC
                                     <span className="text-foreground font-bold">Total recargos cobrados</span>
                                     <span className="text-foreground font-black">+${Number(caja.totalSurcharges || 0).toFixed(2)}</span>
                                   </div>
+                                </div>
+                               </div>
+                             )}
+
+                            {caja.transactions && caja.transactions.length > 0 && (
+                              <div className="mt-6">
+                                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                  <h5 className="text-primary font-bold">Ventas realizadas</h5>
+                                  <span className="bg-primary/15 text-primary px-2.5 py-1 rounded-full text-xs font-bold">
+                                    {caja.transactions.length} {caja.transactions.length === 1 ? "venta" : "ventas"}
+                                  </span>
+                                </div>
+                                <div className="space-y-3">
+                                  {caja.transactions.map((transaction, transactionIndex) => (
+                                    <article key={transaction.id} className="bg-surface rounded-xl border border-foreground/15 overflow-hidden shadow-sm">
+                                      <div className="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-foreground/15 bg-background/40">
+                                        <div>
+                                          <p className="text-foreground font-bold">
+                                            Venta #{transaction.id || transactionIndex + 1}
+                                          </p>
+                                          <p className="text-foreground/60 text-xs font-medium">
+                                            {[transaction.date, transaction.time].filter(Boolean).join(" · ") || "Fecha no disponible"}
+                                          </p>
+                                        </div>
+                                        <p className="text-foreground font-black text-lg">
+                                          ${Number(transaction.total || 0).toFixed(2)}
+                                        </p>
+                                      </div>
+
+                                      <div className="p-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(220px,0.45fr)]">
+                                        <div>
+                                          <p className="text-foreground/70 font-bold text-xs uppercase tracking-wide mb-2">Productos vendidos</p>
+                                          <div className="rounded-lg border border-foreground/15 overflow-hidden">
+                                            {transaction.items?.map((item, itemIndex) => (
+                                              <div key={`${transaction.id}-${itemIndex}`} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 p-3 border-b border-foreground/15 last:border-b-0">
+                                                <div className="min-w-0">
+                                                  <p className="text-foreground font-bold text-sm whitespace-normal break-words">{item.productName}</p>
+                                                  <p className="text-foreground/60 text-xs font-medium mt-0.5">
+                                                    {item.quantity} u. × ${Number(item.price || 0).toFixed(2)}
+                                                  </p>
+                                                </div>
+                                                <span className="text-foreground font-bold text-sm whitespace-nowrap self-center">${Number(item.total || 0).toFixed(2)}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+
+                                        <div>
+                                          <p className="text-foreground/70 font-bold text-xs uppercase tracking-wide mb-2">Medios de pago</p>
+                                          <div className="space-y-2">
+                                            {transaction.payments?.map((payment, paymentIndex) => (
+                                              <div key={`${transaction.id}-payment-${paymentIndex}`} className="flex items-center justify-between gap-3 bg-background rounded-lg border border-foreground/15 px-3 py-2.5">
+                                                <span className="text-foreground/80 font-medium text-sm break-words">{payment.methodName}</span>
+                                                <span className="text-foreground font-bold text-sm whitespace-nowrap">${Number(payment.amount || 0).toFixed(2)}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </article>
+                                  ))}
                                 </div>
                               </div>
                             )}
