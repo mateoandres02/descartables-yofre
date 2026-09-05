@@ -50,7 +50,12 @@ export const ProductCard = memo(function ProductCard({ product, onAddToCart }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-            <h3 className="text-foreground font-bold text-base md:text-lg leading-tight truncate">{product.name}</h3>
+            <h3
+              className="text-foreground font-bold text-base md:text-lg leading-tight min-w-0 flex-1 whitespace-normal break-words"
+              title={product.name}
+            >
+              {product.name}
+            </h3>
             {noStock && (
               <span className="bg-red-500/15 text-red-600 px-2 py-0.5 rounded text-xs font-bold shrink-0 shadow-sm">
                 Sin stock

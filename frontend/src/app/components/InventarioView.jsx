@@ -437,7 +437,11 @@ export function InventarioView() {
                     <td className="p-4">
                       <input type="checkbox" checked={selectedIds.includes(product.id)} onChange={() => toggleSelected(product.id)} className="accent-primary w-4 h-4" />
                     </td>
-                    <td className="p-4 max-w-[220px]"><span className="text-foreground font-bold block truncate" title={product.name}>{product.name}</span></td>
+                    <td className="p-4 min-w-[260px] max-w-[420px] align-top">
+                      <span className="text-foreground font-bold block whitespace-normal break-words leading-snug" title={product.name}>
+                        {product.name}
+                      </span>
+                    </td>
                     <td className="p-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-2">
                         <button
