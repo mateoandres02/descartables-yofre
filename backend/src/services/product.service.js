@@ -1,7 +1,7 @@
 import { ProductModel } from "../models/product.model.js";
 import { ProductPriceTierModel } from "../models/productPriceTier.model.js";
-import { StockModificationModel } from "../models/stockModification.model.js";
 import { roundPriceUpToTen } from "../constants.js";
+import { getArgentinaTime } from "../db/timeUtils.js";
 
 const VALID_ICONS = ["BookOpen", "Notebook", "PenSquare", "BookCopy", "Package"];
 
@@ -132,13 +132,15 @@ export const ProductService = {
       unitsPerPack: pack.unitsPerPack,
       packPrice: pack.packPrice,
     });
-    if (tiers.length) await ProductPriceTierModel.replaceForProduct(created.id, tiers);
-    return attachTiers(await ProductModel.findById(created.id));
+    return ProductModel.createTiersAndFindById(created.id, tiers);
   },
 
   async update(id, updates) {
     const product = await ProductModel.findById(id);
     if (!product) throw { status: 404, message: "Producto no encontrado." };
+
+    const recordStockModification = updates.recordStockModification === true;
+    delete updates.recordStockModification;
 
     if (updates.icon && !VALID_ICONS.includes(updates.icon)) {
       throw { status: 400, message: `Ícono inválido. Válidos: ${VALID_ICONS.join(", ")}` };
@@ -184,11 +186,22 @@ export const ProductService = {
       updates.packPrice = pack.packPrice;
     }
 
-    if (Object.keys(updates).length > 0) {
-      await ProductModel.update(id, updates);
-    }
-    if (nextTiers) await ProductPriceTierModel.replaceForProduct(Number(id), nextTiers);
-    return attachTiers(await ProductModel.findById(id));
+    const nextStock = "stock" in updates ? Number(updates.stock) : Number(product.stock);
+    const stockChanged = Number(product.stock) !== nextStock;
+    const stockModification = recordStockModification && stockChanged
+      ? {
+          productId: Number(id),
+          productName: updates.name || product.name,
+          oldStock: Number(product.stock),
+          newStock: nextStock,
+          createdAt: getArgentinaTime().datetime,
+        }
+      : null;
+
+    return ProductModel.updateWithDetails(Number(id), updates, {
+      tiers: nextTiers,
+      stockModification,
+    });
   },
 
   async bulkAssign({ productIds, priceGroupId }) {

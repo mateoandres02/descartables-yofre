@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Search, Plus, Edit2, Trash2, AlertTriangle, X, Package, BookOpen, Notebook, PenSquare, BookCopy, ScanBarcode } from "lucide-react";
 import { Loader } from "./Loader.jsx";
 import { toast } from "sonner";
@@ -53,6 +53,7 @@ export function InventarioView() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [assignModal, setAssignModal] = useState(null);
   const [page, setPage] = useState(1);
+  const saveInFlightRef = useRef(false);
 
   async function fetchData() {
     try {
@@ -199,7 +200,8 @@ export function InventarioView() {
 
   const handleSaveProduct = async () => {
     if (!productModal.item?.name) { toast.error("El nombre del producto es obligatorio"); return; }
-    if (submitting) return;
+    if (saveInFlightRef.current) return;
+    saveInFlightRef.current = true;
     setSubmitting(true);
     try {
       const payload = {
@@ -223,31 +225,28 @@ export function InventarioView() {
           .filter((t) => t.quantity >= 2 && Number.isFinite(t.price) && t.price >= 0),
       };
 
-      const originalProduct = inventory.find(p => p.id === productModal.item.id);
-      const oldStock = originalProduct ? Number(originalProduct.stock) : 0;
-
+      let savedProduct;
       if (productModal.isNew) {
-        await api.post("/products", payload);
+        const response = await api.post("/products", payload);
+        savedProduct = response.data;
         toast.success("Producto creado exitosamente");
       } else {
-        await api.put(`/products/${productModal.item.id}`, payload);
+        const response = await api.put(`/products/${productModal.item.id}`, {
+          ...payload,
+          recordStockModification: true,
+        });
+        savedProduct = response.data;
         toast.success("Producto actualizado exitosamente");
-        
-        // Si el stock fue modificado manualmente, registramos el evento
-        if (oldStock !== payload.stock) {
-          await api.post("/stats/stock-modifications", {
-            productId: productModal.item.id,
-            productName: productModal.item.name,
-            oldStock,
-            newStock: payload.stock
-          }).catch(() => {});
-        }
       }
+
+      setInventory((current) => productModal.isNew
+        ? [...current, savedProduct]
+        : current.map((product) => product.id === savedProduct.id ? savedProduct : product));
       setProductModal({ isOpen: false, item: null, isNew: false });
-      fetchData();
     } catch (err) {
       toast.error(err.response?.data?.message || "Error al guardar");
     } finally {
+      saveInFlightRef.current = false;
       setSubmitting(false);
     }
   };
