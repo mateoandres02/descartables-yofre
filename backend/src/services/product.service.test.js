@@ -116,6 +116,17 @@ test("actualiza stock, precios por cantidad y auditoría en el mismo guardado", 
   assert.deepEqual(Array.from(audit.rows[0]), [1, "Vaso de prueba", 12, 20]);
 });
 
+test("rechaza códigos de barra duplicados sin una consulta previa", async () => {
+  await assert.rejects(
+    () => ProductService.create({
+      name: "Producto con código repetido",
+      codbarra: "779000000001",
+      price: 100,
+    }),
+    (error) => error.status === 409 && error.message.includes("779000000001")
+  );
+});
+
 test("revierte todo el guardado si una de las escrituras falla", async () => {
   await assert.rejects(() => ProductService.update(1, {
     categoryId: 999,

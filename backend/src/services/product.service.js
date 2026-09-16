@@ -14,12 +14,18 @@ function normalizeCodbarra(value) {
   return str;
 }
 
-async function assertUniqueCodbarra(codbarra, excludeId = null) {
-  if (!codbarra) return;
-  const existing = await ProductModel.findByCodbarra(codbarra);
-  if (existing && existing.id !== excludeId) {
+function isDuplicateCodbarraError(error) {
+  const messages = [error?.message, error?.cause?.message, error?.cause?.cause?.message]
+    .filter(Boolean)
+    .join(" ");
+  return messages.includes("products.cod_barra") || messages.includes("products.codbarra");
+}
+
+function throwFriendlyDuplicateCodbarraError(error, codbarra) {
+  if (isDuplicateCodbarraError(error)) {
     throw { status: 409, message: `Ya existe un producto con el código de barras ${codbarra}.` };
   }
+  throw error;
 }
 
 function normalizeMoney(value, label) {
@@ -113,26 +119,29 @@ export const ProductService = {
     }
 
     const normalizedCodbarra = normalizeCodbarra(codbarra);
-    await assertUniqueCodbarra(normalizedCodbarra);
     const pack = normalizePackFields({ unitsPerPack, packPrice });
     const tiers = normalizePriceTiers(priceTiers) || [];
 
-    const [created] = await ProductModel.create({
-      name,
-      codbarra: normalizedCodbarra,
-      categoryId: categoryId || null,
-      priceGroupId: priceGroupId || null,
-      packTypeId: packTypeId || null,
-      cost: normalizeMoney(cost ?? 0, "El costo"),
-      price: normalizeCatalogPrice(price, "El precio unitario"),
-      stock: stock ?? 0,
-      minStock: minStock ?? 5,
-      icon: icon || "Package",
-      isAvailable: isAvailable !== false,
-      unitsPerPack: pack.unitsPerPack,
-      packPrice: pack.packPrice,
-    });
-    return ProductModel.createTiersAndFindById(created.id, tiers);
+    try {
+      const [created] = await ProductModel.create({
+        name,
+        codbarra: normalizedCodbarra,
+        categoryId: categoryId || null,
+        priceGroupId: priceGroupId || null,
+        packTypeId: packTypeId || null,
+        cost: normalizeMoney(cost ?? 0, "El costo"),
+        price: normalizeCatalogPrice(price, "El precio unitario"),
+        stock: stock ?? 0,
+        minStock: minStock ?? 5,
+        icon: icon || "Package",
+        isAvailable: isAvailable !== false,
+        unitsPerPack: pack.unitsPerPack,
+        packPrice: pack.packPrice,
+      });
+      return await ProductModel.createTiersAndFindById(created.id, tiers);
+    } catch (error) {
+      throwFriendlyDuplicateCodbarraError(error, normalizedCodbarra);
+    }
   },
 
   async update(id, updates) {
@@ -148,7 +157,6 @@ export const ProductService = {
 
     if ("codbarra" in updates) {
       updates.codbarra = normalizeCodbarra(updates.codbarra);
-      await assertUniqueCodbarra(updates.codbarra, Number(id));
     }
 
     delete updates.suggestedPricePercent;
@@ -198,10 +206,14 @@ export const ProductService = {
         }
       : null;
 
-    return ProductModel.updateWithDetails(Number(id), updates, {
-      tiers: nextTiers,
-      stockModification,
-    });
+    try {
+      return await ProductModel.updateWithDetails(Number(id), updates, {
+        tiers: nextTiers,
+        stockModification,
+      });
+    } catch (error) {
+      throwFriendlyDuplicateCodbarraError(error, updates.codbarra);
+    }
   },
 
   async bulkAssign({ productIds, priceGroupId }) {

@@ -594,7 +594,7 @@ export function InventarioView() {
       </div>
 
       {productModal.isOpen && productModal.item && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-2xl w-full max-w-md border border-surface max-h-[90vh] flex flex-col shadow-2xl">
             <div className="p-6 border-b border-surface flex items-center justify-between shrink-0">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
