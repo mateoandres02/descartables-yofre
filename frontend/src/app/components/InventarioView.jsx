@@ -595,7 +595,7 @@ export function InventarioView() {
 
       {productModal.isOpen && productModal.item && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl w-full max-w-md border border-surface max-h-[90vh] flex flex-col shadow-2xl">
+          <div className="bg-background rounded-2xl w-full max-w-md border border-surface max-h-[90vh] min-h-0 flex flex-col shadow-2xl">
             <div className="p-6 border-b border-surface flex items-center justify-between shrink-0">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
                 <Package size={24} className="text-foreground" />
@@ -605,7 +605,7 @@ export function InventarioView() {
                 <X size={24} />
               </button>
             </div>
-            <fieldset disabled={submitting} className="p-6 space-y-4 overflow-y-auto disabled:opacity-70">
+            <fieldset disabled={submitting} className="flex-1 min-h-0 p-6 space-y-4 overflow-y-auto overscroll-contain disabled:opacity-70">
               {[
                 { label: "Nombre del producto", field: "name", type: "text", placeholder: "Ej. El Aleph - J.L. Borges" },
                 { label: "Código de barras", field: "codbarra", type: "text", placeholder: "Escaneá o ingresá solo números", numeric: true },
