@@ -5,6 +5,8 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 const api = axios.create({
   baseURL: API_URL,
+  // Evita que una función remota o una conexión caída deje la interfaz esperando para siempre.
+  timeout: 30000,
   headers: { "Content-Type": "application/json" },
 });
 

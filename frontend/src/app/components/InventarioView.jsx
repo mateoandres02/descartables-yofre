@@ -17,6 +17,53 @@ const ICON_OPTIONS = [
 ];
 
 const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package", unitsPerPack: "", packPrice: "", packTypeId: null, priceTiers: [] };
+const PRODUCT_DRAFT_STORAGE_KEY = "descartables-yofre:product-draft";
+
+function loadProductDraft() {
+  try {
+    const rawDraft = localStorage.getItem(PRODUCT_DRAFT_STORAGE_KEY);
+    if (!rawDraft) return null;
+
+    const draft = JSON.parse(rawDraft);
+    if (!draft?.item || typeof draft.item !== "object") return null;
+
+    return {
+      item: { ...EMPTY_PRODUCT, ...draft.item },
+      isNew: Boolean(draft.isNew),
+    };
+  } catch {
+    try {
+      localStorage.removeItem(PRODUCT_DRAFT_STORAGE_KEY);
+    } catch {
+      // El almacenamiento local puede estar bloqueado por el navegador.
+    }
+    return null;
+  }
+}
+
+function saveProductDraft(modal) {
+  try {
+    localStorage.setItem(PRODUCT_DRAFT_STORAGE_KEY, JSON.stringify({
+      item: modal.item,
+      isNew: modal.isNew,
+      savedAt: new Date().toISOString(),
+    }));
+  } catch {
+    // La app sigue funcionando aunque el navegador no permita almacenamiento local.
+  }
+}
+
+function clearProductDraft() {
+  try {
+    localStorage.removeItem(PRODUCT_DRAFT_STORAGE_KEY);
+  } catch {
+    // No se requiere acción adicional si el navegador no permite almacenamiento local.
+  }
+}
+
+function isRequestTimeout(error) {
+  return error?.code === "ECONNABORTED" || error?.code === "ETIMEDOUT";
+}
 
 function toModalItem(product) {
   return {
@@ -40,7 +87,10 @@ export function InventarioView() {
   const [selectedCategory, setSelectedCategory] = useState("Todos");
   const [inventory, setInventory] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [productModal, setProductModal] = useState({ isOpen: false, item: null, isNew: false });
+  const [initialProductDraft] = useState(() => loadProductDraft());
+  const [productModal, setProductModal] = useState(() => initialProductDraft
+    ? { isOpen: true, item: initialProductDraft.item, isNew: initialProductDraft.isNew }
+    : { isOpen: false, item: null, isNew: false });
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, product: null });
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -54,6 +104,25 @@ export function InventarioView() {
   const [assignModal, setAssignModal] = useState(null);
   const [page, setPage] = useState(1);
   const saveInFlightRef = useRef(false);
+
+  useEffect(() => {
+    if (initialProductDraft) {
+      toast.info("Recuperamos un producto sin guardar", {
+        description: "Podés continuar completándolo y guardarlo cuando quieras.",
+      });
+    }
+  }, [initialProductDraft]);
+
+  useEffect(() => {
+    if (productModal.isOpen && productModal.item) {
+      saveProductDraft(productModal);
+    }
+  }, [productModal]);
+
+  const closeProductModal = () => {
+    clearProductDraft();
+    setProductModal({ isOpen: false, item: null, isNew: false });
+  };
 
   async function fetchData() {
     try {
@@ -242,9 +311,17 @@ export function InventarioView() {
       setInventory((current) => productModal.isNew
         ? [...current, savedProduct]
         : current.map((product) => product.id === savedProduct.id ? savedProduct : product));
+      clearProductDraft();
       setProductModal({ isOpen: false, item: null, isNew: false });
     } catch (err) {
-      toast.error(err.response?.data?.message || "Error al guardar");
+      if (isRequestTimeout(err)) {
+        toast.error("El guardado tardó demasiado", {
+          description: "Tus datos siguen guardados en este dispositivo. Revisá la conexión e intentá nuevamente.",
+          duration: 8000,
+        });
+      } else {
+        toast.error(err.response?.data?.message || "Error al guardar");
+      }
     } finally {
       saveInFlightRef.current = false;
       setSubmitting(false);
@@ -524,11 +601,11 @@ export function InventarioView() {
                 <Package size={24} className="text-foreground" />
                 {productModal.isNew ? "Nuevo Producto" : "Editar Producto"}
               </h2>
-              <button onClick={() => setProductModal({ isOpen: false, item: null, isNew: false })} className="text-foreground/60 hover:text-foreground transition-colors">
+              <button onClick={closeProductModal} disabled={submitting} className="text-foreground/60 hover:text-foreground transition-colors disabled:opacity-50">
                 <X size={24} />
               </button>
             </div>
-            <div className="p-6 space-y-4 overflow-y-auto">
+            <fieldset disabled={submitting} className="p-6 space-y-4 overflow-y-auto disabled:opacity-70">
               {[
                 { label: "Nombre del producto", field: "name", type: "text", placeholder: "Ej. El Aleph - J.L. Borges" },
                 { label: "Código de barras", field: "codbarra", type: "text", placeholder: "Escaneá o ingresá solo números", numeric: true },
@@ -818,9 +895,9 @@ export function InventarioView() {
                   )}
                 </p>
               )}
-            </div>
+            </fieldset>
             <div className="p-6 border-t border-surface flex gap-4 shrink-0">
-              <button onClick={() => setProductModal({ isOpen: false, item: null, isNew: false })} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
+              <button onClick={closeProductModal} disabled={submitting} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm disabled:opacity-50">Cancelar</button>
               <button onClick={handleSaveProduct} disabled={submitting} className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-foreground font-bold py-4 rounded-xl transition-all shadow-md">{submitting ? "Guardando..." : "Guardar"}</button>
             </div>
           </div>
