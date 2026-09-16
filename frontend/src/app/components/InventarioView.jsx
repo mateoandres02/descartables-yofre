@@ -595,8 +595,8 @@ export function InventarioView() {
 
       {productModal.isOpen && productModal.item && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-background rounded-2xl w-full max-w-md border border-surface max-h-[90vh] min-h-0 flex flex-col shadow-2xl">
-            <div className="p-6 border-b border-surface flex items-center justify-between shrink-0">
+          <div className="bg-background rounded-2xl w-full max-w-md border border-surface h-[calc(100dvh-2rem)] max-h-[860px] grid grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-surface flex items-center justify-between bg-background relative z-10">
               <h2 className="text-primary font-bold text-2xl flex items-center gap-2">
                 <Package size={24} className="text-foreground" />
                 {productModal.isNew ? "Nuevo Producto" : "Editar Producto"}
@@ -605,7 +605,7 @@ export function InventarioView() {
                 <X size={24} />
               </button>
             </div>
-            <fieldset disabled={submitting} className="flex-1 min-h-0 p-6 space-y-4 overflow-y-auto overscroll-contain disabled:opacity-70">
+            <fieldset disabled={submitting} className="min-h-0 p-6 space-y-4 overflow-y-auto overscroll-contain disabled:opacity-70">
               {[
                 { label: "Nombre del producto", field: "name", type: "text", placeholder: "Ej. El Aleph - J.L. Borges" },
                 { label: "Código de barras", field: "codbarra", type: "text", placeholder: "Escaneá o ingresá solo números", numeric: true },
@@ -896,7 +896,7 @@ export function InventarioView() {
                 </p>
               )}
             </fieldset>
-            <div className="p-6 border-t border-surface flex gap-4 shrink-0">
+            <div className="p-6 border-t border-surface flex gap-4 bg-background relative z-10">
               <button onClick={closeProductModal} disabled={submitting} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm disabled:opacity-50">Cancelar</button>
               <button onClick={handleSaveProduct} disabled={submitting} className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-foreground font-bold py-4 rounded-xl transition-all shadow-md">{submitting ? "Guardando..." : "Guardar"}</button>
             </div>
