@@ -20,7 +20,7 @@ function SaleButton({ label, price, enabled, tone, onClick }) {
     <button
       onClick={() => enabled && onClick()}
       disabled={!enabled}
-      className={`h-9 md:h-10 px-2.5 md:px-3 rounded-lg flex items-center justify-end gap-2 transition-all shadow-md min-w-[132px] ${tones[tone]}`}
+      className={`h-9 md:h-10 px-2.5 md:px-3 rounded-lg flex items-center justify-end gap-2 transition-all shadow-md min-w-[132px] product-card__sale-button ${tones[tone]}`}
     >
       <span className="text-left leading-tight">
         <span className="block text-[10px] font-bold uppercase opacity-80">{label}</span>
@@ -42,8 +42,8 @@ export const ProductCard = memo(function ProductCard({ product, onAddToCart }) {
   const multiSale = sellPack || tiers.length > 0;
 
   return (
-    <div className={`bg-surface border rounded-xl p-3 md:p-4 flex items-center justify-between gap-3 shadow-sm transition-all duration-300 ${noStock ? "border-red-500/40 opacity-70" : "border-foreground/15 hover:border-primary/50"}`}>
-      <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+    <div className={`product-card bg-surface border rounded-xl p-3 md:p-4 flex items-center justify-between gap-3 shadow-sm transition-all duration-300 ${noStock ? "border-red-500/40 opacity-70" : "border-foreground/15 hover:border-primary/50"}`}>
+      <div className="product-card__details flex items-center gap-3 md:gap-4 min-w-0">
         <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-background flex items-center justify-center shrink-0 shadow-inner">
           <Icon size={20} className="text-primary" />
         </div>
@@ -72,7 +72,7 @@ export const ProductCard = memo(function ProductCard({ product, onAddToCart }) {
         </div>
       </div>
       {multiSale ? (
-        <div className="flex flex-wrap justify-end gap-1.5 ml-2 shrink-0 max-w-[70%]">
+        <div className="product-card__actions flex flex-wrap justify-end gap-1.5 ml-2 shrink-0 max-w-[70%]">
           <SaleButton
             label="Unidad"
             price={product.price}
@@ -101,7 +101,7 @@ export const ProductCard = memo(function ProductCard({ product, onAddToCart }) {
           ))}
         </div>
       ) : (
-        <div className="flex items-center gap-3 md:gap-6 ml-2 shrink-0">
+        <div className="product-card__actions flex items-center gap-3 md:gap-6 ml-2 shrink-0">
           <span className="text-foreground font-black text-base md:text-xl">${formatCatalogPrice(product.price)}</span>
           <button
             onClick={() => canAddUnit && onAddToCart(product, "unidad")}

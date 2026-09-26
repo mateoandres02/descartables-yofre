@@ -363,7 +363,7 @@ export function InventarioView() {
 
 
   return (
-    <div className="flex-1 p-4 pb-20 md:p-8 overflow-y-auto relative">
+    <div className="flex-1 min-w-0 p-4 pb-20 md:p-8 overflow-y-auto relative">
       {loading && <Loader />}
       <div className="mb-6 md:mb-8">
         <h1 className="text-foreground font-bold text-2xl md:text-4xl mb-1 md:mb-2">Gestión de Inventario</h1>
