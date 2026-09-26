@@ -37,7 +37,7 @@ export function DailyExpenseModal({ onClose, onSubmit }) {
               type="text"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Ej. Compra de resmas, Pago proveedor..."
+              placeholder="Ej. Compra de bolsas, Pago proveedor..."
               className="w-full bg-surface text-foreground placeholder-foreground/50 font-bold rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
               required
               autoFocus

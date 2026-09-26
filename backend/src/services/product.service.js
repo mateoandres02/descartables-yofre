@@ -1,9 +1,9 @@
 import { ProductModel } from "../models/product.model.js";
 import { ProductPriceTierModel } from "../models/productPriceTier.model.js";
-import { roundPriceUpToTen } from "../constants.js";
+import { PRODUCT_ICONS, roundPriceUpToTen } from "../constants.js";
 import { getArgentinaTime } from "../db/timeUtils.js";
 
-const VALID_ICONS = ["BookOpen", "Notebook", "PenSquare", "BookCopy", "Package"];
+const VALID_ICONS = new Set(PRODUCT_ICONS);
 
 function normalizeCodbarra(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -114,8 +114,8 @@ export const ProductService = {
     if (!name || price === undefined) {
       throw { status: 400, message: "Nombre y precio son requeridos." };
     }
-    if (icon && !VALID_ICONS.includes(icon)) {
-      throw { status: 400, message: `Ícono inválido. Válidos: ${VALID_ICONS.join(", ")}` };
+    if (icon && !VALID_ICONS.has(icon)) {
+      throw { status: 400, message: `Ícono inválido. Válidos: ${PRODUCT_ICONS.join(", ")}` };
     }
 
     const normalizedCodbarra = normalizeCodbarra(codbarra);
@@ -151,8 +151,8 @@ export const ProductService = {
     const recordStockModification = updates.recordStockModification === true;
     delete updates.recordStockModification;
 
-    if (updates.icon && !VALID_ICONS.includes(updates.icon)) {
-      throw { status: 400, message: `Ícono inválido. Válidos: ${VALID_ICONS.join(", ")}` };
+    if (updates.icon && !VALID_ICONS.has(updates.icon)) {
+      throw { status: 400, message: `Ícono inválido. Válidos: ${PRODUCT_ICONS.join(", ")}` };
     }
 
     if ("codbarra" in updates) {

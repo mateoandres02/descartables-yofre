@@ -1,9 +1,8 @@
 import { memo } from "react";
-import { Plus, BookOpen, Notebook, PenSquare, BookCopy, Package } from "lucide-react";
+import { Plus } from "lucide-react";
 import { activeTiers, formatStock, hasPackSale, packTypeLabel } from "../../utils/pack.js";
 import { formatCatalogPrice } from "../../utils/price.js";
-
-const ICON_MAP = { BookOpen, Notebook, PenSquare, BookCopy, Package };
+import { getProductIcon } from "../../utils/productIcons.js";
 
 function SaleButton({ label, price, enabled, tone, onClick }) {
   const tones = {
@@ -33,7 +32,7 @@ function SaleButton({ label, price, enabled, tone, onClick }) {
 }
 
 export const ProductCard = memo(function ProductCard({ product, onAddToCart }) {
-  const Icon = ICON_MAP[product.icon] || Package;
+  const Icon = getProductIcon(product.icon);
   const noStock = product.stock === 0;
   const lowStock = !noStock && product.stock <= product.minStock;
   const sellPack = hasPackSale(product);

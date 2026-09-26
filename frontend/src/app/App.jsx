@@ -17,6 +17,7 @@ import { SubscriptionOverlay } from "./modules/subscription/SubscriptionOverlay.
 import api from "../services/api.js";
 
 const toastOptions = {
+  duration: 2000,
   style: {
     background: "var(--color-surface)",
     color: "var(--color-foreground)",
@@ -144,7 +145,7 @@ export default function App() {
     return (
       <>
         <LoginView onLogin={handleLogin} />
-        <Toaster position="top-right" toastOptions={toastOptions} />
+        <Toaster position="bottom-left" toastOptions={toastOptions} />
       </>
     );
   }
@@ -200,7 +201,7 @@ export default function App() {
         {activeView === "configuracion" && user.role === "admin" && <ConfiguracionView />}
 
         <SubscriptionOverlay userRole={user.role} onLogout={handleLogout} />
-        <Toaster position="top-right" toastOptions={toastOptions} />
+        <Toaster position="bottom-left" toastOptions={toastOptions} />
       </div>
     </SubscriptionProvider>
   );

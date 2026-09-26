@@ -75,6 +75,87 @@ const migrations = [
       "CREATE UNIQUE INDEX IF NOT EXISTS cash_registers_single_open_idx ON cash_registers (is_open) WHERE is_open = 1",
     ],
   },
+  {
+    id: "20260919_005_disposable_product_icons",
+    statements: [
+      `UPDATE products
+       SET icon = CASE
+         WHEN lower(name) LIKE '%guante%'
+           OR lower(name) LIKE '%trapo%'
+           OR lower(name) LIKE '%esponja%'
+           OR lower(name) LIKE '%detergente%'
+           OR lower(name) LIKE '%limpieza%' THEN 'SprayCan'
+         WHEN lower(name) LIKE '%bolsa%'
+           OR lower(name) LIKE 'ppp %'
+           OR lower(name) LIKE '%film%' THEN 'ShoppingBag'
+         WHEN lower(name) LIKE '%cuchara%'
+           OR lower(name) LIKE '%cucharita%'
+           OR lower(name) LIKE '%cuchillo%'
+           OR lower(name) LIKE '%tenedor%'
+           OR lower(name) LIKE '%cubierto%'
+           OR lower(name) LIKE '%escarbadiente%'
+           OR lower(name) LIKE '%brochette%'
+           OR lower(name) LIKE '%pincho%'
+           OR lower(name) LIKE '%pinche%'
+           OR lower(name) LIKE '%palito%' THEN 'Utensils'
+         WHEN lower(name) LIKE '%copa%' THEN 'GlassWater'
+         WHEN lower(name) LIKE '%vaso%'
+           OR lower(name) LIKE '%sorbete%'
+           OR lower(name) LIKE '%agitador%' THEN 'CupSoda'
+         WHEN lower(name) LIKE '%pote%'
+           OR lower(name) LIKE '%envase%'
+           OR lower(name) LIKE '%tapa%'
+           OR lower(name) LIKE '%marmita%'
+           OR lower(name) LIKE '%ensaladera%'
+           OR lower(name) LIKE '%frasco%' THEN 'Soup'
+         WHEN lower(name) LIKE '%caja%'
+           OR lower(name) LIKE '%estuche%' THEN 'Box'
+         WHEN lower(name) LIKE '%servilleta%'
+           OR lower(name) LIKE '%toalla%'
+           OR lower(name) LIKE '%papel%'
+           OR lower(name) LIKE '%blonda%'
+           OR lower(name) LIKE '%pirotin%'
+           OR lower(name) LIKE '%molde%' THEN 'ScrollText'
+         WHEN lower(name) LIKE '%bandeja%'
+           OR lower(name) LIKE '%plato%'
+           OR lower(name) LIKE '%budinera%'
+           OR lower(name) LIKE '%oblea%' THEN 'Layers3'
+         WHEN lower(name) LIKE '%cinta decorativa%'
+           OR lower(name) LIKE '%moño%'
+           OR name LIKE '%MOÑO%' THEN 'PartyPopper'
+         WHEN category_id IN (SELECT id FROM categories WHERE lower(name) = 'cotillon') THEN 'PartyPopper'
+         WHEN category_id IN (SELECT id FROM categories WHERE lower(name) IN ('bolsa', 'ppp')) THEN 'ShoppingBag'
+         WHEN category_id IN (SELECT id FROM categories WHERE lower(name) = 'vaso,tapas y pote') THEN 'CupSoda'
+         WHEN category_id IN (SELECT id FROM categories WHERE lower(name) = 'envases') THEN 'Soup'
+         WHEN category_id IN (SELECT id FROM categories WHERE lower(name) IN ('bandejas', 'aluminio', 'telgopor')) THEN 'Layers3'
+         WHEN category_id IN (SELECT id FROM categories WHERE lower(name) = 'papel') THEN 'ScrollText'
+         WHEN category_id IN (SELECT id FROM categories WHERE lower(name) = 'cajas') THEN 'Box'
+         ELSE 'Package'
+       END`,
+    ],
+  },
+  {
+    id: "20260919_006_refine_disposable_product_icons",
+    statements: [
+      `UPDATE products
+       SET icon = 'Utensils'
+       WHERE lower(name) LIKE '%cucharita%'
+          OR lower(name) LIKE '%pinche%'`,
+      `UPDATE products
+       SET icon = 'PartyPopper'
+       WHERE lower(name) LIKE '%cinta decorativa%'
+          OR lower(name) LIKE '%moño%'
+          OR name LIKE '%MOÑO%'`,
+    ],
+  },
+  {
+    id: "20260919_007_accented_disposable_icons",
+    statements: [
+      `UPDATE products
+       SET icon = 'PartyPopper'
+       WHERE name LIKE '%MOÑO%'`,
+    ],
+  },
 ];
 
 function quoteIdentifier(identifier) {

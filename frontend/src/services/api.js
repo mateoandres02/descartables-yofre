@@ -50,20 +50,20 @@ if (USE_LOCAL_MOCK) {
       { id: 2, name: "Sueldos", amount: 35000 }
     ],
     "/daily-expenses": [
-      { id: 1, reason: "Compra de resmas de papel", amount: 3000, method: "efectivo", createdAt: new Date().toISOString() }
+      { id: 1, reason: "Compra de bolsas", amount: 3000, method: "efectivo", createdAt: new Date().toISOString() }
     ],
     "/products": [
-      { id: 1, name: "El Aleph - J.L. Borges", category: "Libros", cost: 5000, price: 8500, stock: 12, minStock: 3, icon: "BookOpen", isAvailable: true },
-      { id: 2, name: "Cuaderno A5 Rayado (80 hojas)", category: "Útiles", cost: 1500, price: 2500, stock: 24, minStock: 10, icon: "Notebook", isAvailable: true },
-      { id: 3, name: "Lápiz Faber-Castell HB", category: "Útiles", cost: 200, price: 500, stock: 50, minStock: 20, icon: "PenSquare", isAvailable: true }
+      { id: 1, name: "Vaso térmico 180 cc", category: "Vasos", cost: 5000, price: 8500, stock: 12, minStock: 3, icon: "CupSoda", isAvailable: true },
+      { id: 2, name: "Bandeja plástica N° 102", category: "Bandejas", cost: 1500, price: 2500, stock: 24, minStock: 10, icon: "Layers3", isAvailable: true },
+      { id: 3, name: "Bolsa camiseta mediana", category: "Bolsas", cost: 200, price: 500, stock: 50, minStock: 20, icon: "ShoppingBag", isAvailable: true }
     ],
     "/stats/restock": { restockCost: 18500 },
     "/stats/activity-log": [
       { id: "caja-open-1", type: "Apertura de Caja", details: "Fondo inicial: $15000", date: new Date().toISOString(), icon: "Unlock", color: "text-success", bg: "bg-success/10" }
     ],
     // Agregamos mocks genéricos para otras rutas (como login, mesas, etc.)
-    "/categories": [{ id: 1, name: "Libros" }, { id: 2, name: "Útiles" }, { id: 3, name: "Infantiles" }],
-    "/bar-bottles": [{ id: 1, productName: "El Aleph - J.L. Borges" }]
+    "/categories": [{ id: 1, name: "Vasos" }, { id: 2, name: "Bandejas" }, { id: 3, name: "Bolsas" }],
+    "/bar-bottles": [{ id: 1, productName: "Vaso térmico 180 cc" }]
   };
 
   api.defaults.adapter = (config) => {

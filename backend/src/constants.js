@@ -2,6 +2,22 @@
 // ofrece como método de cobro normal. Representa el saldo que queda fiado.
 export const ACCOUNT_METHOD_NAME = "Cuenta corriente";
 
+// Íconos de producto disponibles para el negocio de descartables. Las claves
+// coinciden con los nombres exportados por lucide-react en el frontend.
+export const PRODUCT_ICONS = [
+  "Package",
+  "CupSoda",
+  "GlassWater",
+  "Utensils",
+  "Soup",
+  "Layers3",
+  "ShoppingBag",
+  "Box",
+  "ScrollText",
+  "PartyPopper",
+  "SprayCan",
+];
+
 export function isAccountMethod(methodName) {
   return String(methodName || "").trim().toLowerCase() === ACCOUNT_METHOD_NAME.toLowerCase();
 }

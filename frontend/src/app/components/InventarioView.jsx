@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Search, Plus, Edit2, Trash2, AlertTriangle, X, Package, BookOpen, Notebook, PenSquare, BookCopy, ScanBarcode } from "lucide-react";
+import { Search, Plus, Edit2, Trash2, AlertTriangle, X, Package, ScanBarcode } from "lucide-react";
 import { Loader } from "./Loader.jsx";
 import { toast } from "sonner";
 import api from "../../services/api.js";
@@ -7,14 +7,7 @@ import { useBarcodeScanner } from "../hooks/useBarcodeScanner.js";
 import { formatStock, hasPackSale, packTypeLabel } from "../../utils/pack.js";
 import { formatCatalogPrice, roundPriceInput } from "../../utils/price.js";
 import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
-
-const ICON_OPTIONS = [
-  { key: "BookOpen",  Icon: BookOpen,  label: "Libro"          },
-  { key: "Notebook",  Icon: Notebook,  label: "Cuaderno"       },
-  { key: "PenSquare", Icon: PenSquare, label: "Útil escolar"   },
-  { key: "BookCopy",  Icon: BookCopy,  label: "Colección"      },
-  { key: "Package", Icon: Package, label: "Genérico"       },
-];
+import { PRODUCT_ICON_OPTIONS } from "../../utils/productIcons.js";
 
 const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package", unitsPerPack: "", packPrice: "", packTypeId: null, priceTiers: [] };
 const PRODUCT_DRAFT_STORAGE_KEY = "descartables-yofre:product-draft";
@@ -607,7 +600,7 @@ export function InventarioView() {
             </div>
             <fieldset disabled={submitting} className="min-h-0 p-6 space-y-4 overflow-y-auto overscroll-contain disabled:opacity-70">
               {[
-                { label: "Nombre del producto", field: "name", type: "text", placeholder: "Ej. El Aleph - J.L. Borges" },
+                { label: "Nombre del producto", field: "name", type: "text", placeholder: "Ej. Vaso térmico 180 cc" },
                 { label: "Código de barras", field: "codbarra", type: "text", placeholder: "Escaneá o ingresá solo números", numeric: true },
               ].map(({ label, field, type, placeholder, numeric }) => (
                 <div key={field}>
@@ -628,8 +621,8 @@ export function InventarioView() {
               {/* Selector de ícono */}
               <div>
                 <label className="text-foreground/80 font-bold text-sm block mb-2">Ícono del producto</label>
-                <div className="flex gap-2">
-                  {ICON_OPTIONS.map(({ key, Icon, label }) => {
+                <div className="grid grid-cols-3 gap-2">
+                  {PRODUCT_ICON_OPTIONS.map(({ key, Icon, label }) => {
                     const selected = (productModal.item.icon || "Package") === key;
                     return (
                       <button
@@ -637,7 +630,7 @@ export function InventarioView() {
                         type="button"
                         title={label}
                         onClick={() => setProductModal((prev) => ({ ...prev, item: { ...prev.item, icon: key } }))}
-                        className={`flex-1 flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${
+                        className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${
                           selected
                             ? "bg-primary/10 border-primary text-foreground shadow-sm font-bold"
                             : "bg-surface border-surface text-foreground/60 font-medium hover:border-primary/50"

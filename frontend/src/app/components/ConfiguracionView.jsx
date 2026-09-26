@@ -616,7 +616,7 @@ export function ConfiguracionView() {
             </div>
             <div className="p-6">
               <label className="text-foreground/80 font-bold text-sm block mb-2">Nombre de la categoría</label>
-              <input type="text" value={categoryModal.item.name} onChange={(e) => setCategoryModal((prev) => ({ ...prev, item: { ...prev.item, name: e.target.value } }))} onKeyDown={(e) => e.key === "Enter" && handleSaveCategory()} className="w-full bg-surface text-foreground placeholder-foreground/50 rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none font-bold transition-all shadow-sm" placeholder="Ej. Novelas, Poesía, Infantiles..." autoFocus />
+              <input type="text" value={categoryModal.item.name} onChange={(e) => setCategoryModal((prev) => ({ ...prev, item: { ...prev.item, name: e.target.value } }))} onKeyDown={(e) => e.key === "Enter" && handleSaveCategory()} className="w-full bg-surface text-foreground placeholder-foreground/50 rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none font-bold transition-all shadow-sm" placeholder="Ej. Vasos, Bandejas, Bolsas..." autoFocus />
             </div>
             <div className="p-6 border-t border-surface flex gap-4">
               <button onClick={() => setCategoryModal({ isOpen: false, item: null })} className="flex-1 bg-surface hover:bg-surface text-foreground font-bold py-4 rounded-xl transition-all shadow-sm">Cancelar</button>
