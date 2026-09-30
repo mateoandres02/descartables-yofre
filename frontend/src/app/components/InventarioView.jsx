@@ -88,7 +88,7 @@ export function InventarioView() {
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showAllLowStock, setShowAllLowStock] = useState(false);
+  const [selectedLowStockCategory, setSelectedLowStockCategory] = useState(null);
   const [brands, setBrands] = useState([]);
   const [collections, setCollections] = useState([]);
   const [packTypes, setPackTypes] = useState([]);
@@ -178,6 +178,24 @@ export function InventarioView() {
   const lowStockItems = useMemo(
     () => inventory.filter((p) => p.stock <= p.minStock).sort((a, b) => byNameEs(a.name, b.name)),
     [inventory]
+  );
+  const lowStockByCategory = useMemo(() => {
+    const groups = new Map();
+
+    lowStockItems.forEach((product) => {
+      const category = String(product.category || "").trim() || "Sin categoría";
+      const products = groups.get(category) || [];
+      products.push(product);
+      groups.set(category, products);
+    });
+
+    return [...groups.entries()]
+      .sort(([categoryA], [categoryB]) => byNameEs(categoryA, categoryB))
+      .map(([category, products]) => ({ category, products }));
+  }, [lowStockItems]);
+
+  const selectedLowStockGroup = lowStockByCategory.find(
+    ({ category }) => category === selectedLowStockCategory
   );
 
   const handleAddProduct = () => {
@@ -376,21 +394,56 @@ export function InventarioView() {
             <AlertTriangle className="text-foreground flex-shrink-0" size={24} />
             <div className="flex-1">
               <h3 className="text-foreground font-bold mb-2">Alerta de Stock Bajo</h3>
-              <p className="text-foreground/80 font-medium text-sm mb-3">{lowStockItems.length} productos en su límite mínimo o por debajo.</p>
-              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto">
-                {(showAllLowStock ? lowStockItems : lowStockItems.slice(0, 5)).map((item) => (
-                  <span key={item.id} className="bg-primary text-foreground font-bold px-3 py-1 rounded-full text-sm shadow-sm">
-                    {item.name}: {item.stock} unidades
-                  </span>
-                ))}
+              <p className="text-foreground/80 font-medium text-sm mb-4">{lowStockItems.length} productos en su límite mínimo o por debajo.</p>
+
+              <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto pr-1" aria-label="Categorías con stock bajo">
+                {lowStockByCategory.map(({ category, products }) => {
+                  const isSelected = selectedLowStockCategory === category;
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => setSelectedLowStockCategory(isSelected ? null : category)}
+                      aria-pressed={isSelected}
+                      className={`rounded-full border px-3 py-1.5 text-sm font-bold transition-all ${
+                        isSelected
+                          ? "bg-primary border-primary text-foreground shadow-sm"
+                          : "bg-surface border-primary/30 text-primary hover:bg-primary/10"
+                      }`}
+                    >
+                      {category} <span className="opacity-80">· {products.length}</span>
+                    </button>
+                  );
+                })}
               </div>
-              {lowStockItems.length > 5 && (
-                <button
-                  onClick={() => setShowAllLowStock((v) => !v)}
-                  className="mt-3 text-foreground font-bold text-sm hover:underline"
-                >
-                  {showAllLowStock ? "Ver menos ▲" : `Ver más (${lowStockItems.length - 5} más) ▼`}
-                </button>
+
+              {selectedLowStockGroup && (
+                <div className="mt-4 rounded-xl border border-primary/30 bg-surface/90 shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between gap-3 border-b border-foreground/10 px-4 py-3">
+                    <div>
+                      <h4 className="text-foreground font-bold">{selectedLowStockGroup.category}</h4>
+                      <p className="text-foreground/60 text-xs font-medium">{selectedLowStockGroup.products.length} productos con faltantes</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedLowStockCategory(null)}
+                      className="text-primary hover:text-secondary text-sm font-bold transition-colors"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto divide-y divide-foreground/10">
+                    {selectedLowStockGroup.products.map((product) => (
+                      <div key={product.id} className="flex items-center justify-between gap-4 px-4 py-3">
+                        <span className="min-w-0 flex-1 text-foreground font-bold text-sm leading-snug break-words">{product.name}</span>
+                        <div className="shrink-0 flex items-center gap-3 text-right text-xs font-bold whitespace-nowrap">
+                          <span className="text-red-600">Stock: {product.stock}</span>
+                          <span className="text-foreground/60">Mín.: {product.minStock}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
