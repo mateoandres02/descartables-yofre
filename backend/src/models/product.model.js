@@ -21,6 +21,7 @@ const SELECT_FIELDS = {
   packTypeId: products.packTypeId,
   packTypeName: packTypes.name,
   cost: products.cost,
+  costPerPack: products.costPerPack,
   price: products.price,
   unitsPerPack: products.unitsPerPack,
   packPrice: products.packPrice,

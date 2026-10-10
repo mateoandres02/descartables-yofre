@@ -61,6 +61,7 @@ export const products = sqliteTable("products", {
   priceGroupId: integer("price_group_id").references(() => priceGroups.id, { onDelete: "set null" }),
   packTypeId: integer("pack_type_id").references(() => packTypes.id, { onDelete: "set null" }),
   cost: real("cost").notNull().default(0),
+  costPerPack: real("cost_per_pack").notNull().default(0),
   price: real("price").notNull(),
   unitsPerPack: integer("units_per_pack").notNull().default(1),
   packPrice: real("pack_price"),

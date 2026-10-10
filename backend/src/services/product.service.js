@@ -110,7 +110,7 @@ export const ProductService = {
     return attachTiers(product);
   },
 
-  async create({ name, codbarra, categoryId, priceGroupId, packTypeId, cost, price, stock, minStock, icon, isAvailable, unitsPerPack, packPrice, priceTiers }) {
+  async create({ name, codbarra, categoryId, priceGroupId, packTypeId, cost, costPerPack, price, stock, minStock, icon, isAvailable, unitsPerPack, packPrice, priceTiers }) {
     if (!name || price === undefined) {
       throw { status: 400, message: "Nombre y precio son requeridos." };
     }
@@ -129,7 +129,8 @@ export const ProductService = {
         categoryId: categoryId || null,
         priceGroupId: priceGroupId || null,
         packTypeId: packTypeId || null,
-        cost: normalizeMoney(cost ?? 0, "El costo"),
+        cost: normalizeMoney(cost ?? 0, "El costo por unidad"),
+        costPerPack: normalizeMoney(costPerPack ?? 0, "El costo por bulto"),
         price: normalizeCatalogPrice(price, "El precio unitario"),
         stock: stock ?? 0,
         minStock: minStock ?? 5,
@@ -171,7 +172,11 @@ export const ProductService = {
     }
 
     if ("cost" in updates) {
-      updates.cost = normalizeMoney(updates.cost, "El costo");
+      updates.cost = normalizeMoney(updates.cost, "El costo por unidad");
+    }
+
+    if ("costPerPack" in updates) {
+      updates.costPerPack = normalizeMoney(updates.costPerPack, "El costo por bulto");
     }
 
     if ("price" in updates) {

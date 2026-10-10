@@ -38,6 +38,7 @@ before(async () => {
       price_group_id INTEGER REFERENCES price_groups(id) ON DELETE SET NULL,
       pack_type_id INTEGER REFERENCES pack_types(id) ON DELETE SET NULL,
       cost REAL NOT NULL DEFAULT 0,
+      cost_per_pack REAL NOT NULL DEFAULT 0,
       price REAL NOT NULL,
       units_per_pack INTEGER NOT NULL DEFAULT 1,
       pack_price REAL,
@@ -83,6 +84,7 @@ test("crea el producto y devuelve sus relaciones sin una recarga completa", asyn
     priceGroupId: 1,
     packTypeId: 1,
     cost: 100,
+    costPerPack: 600,
     price: 151,
     stock: 12,
     minStock: 3,
@@ -96,6 +98,7 @@ test("crea el producto y devuelve sus relaciones sin una recarga completa", asyn
   assert.equal(product.priceGroupName, "Proveedor prueba");
   assert.equal(product.packTypeName, "Caja");
   assert.equal(product.price, 160);
+  assert.equal(product.costPerPack, 600);
   assert.equal(product.packPrice, 910);
   assert.deepEqual(product.priceTiers, [{ quantity: 3, price: 490 }]);
 });
@@ -103,11 +106,13 @@ test("crea el producto y devuelve sus relaciones sin una recarga completa", asyn
 test("actualiza stock, precios por cantidad y auditoría en el mismo guardado", async () => {
   const updated = await ProductService.update(1, {
     stock: 20,
+    costPerPack: 720,
     priceTiers: [{ quantity: 10, price: 1200 }],
     recordStockModification: true,
   });
 
   assert.equal(updated.stock, 20);
+  assert.equal(updated.costPerPack, 720);
   assert.deepEqual(updated.priceTiers, [{ quantity: 10, price: 1200 }]);
 
   const audit = await client.execute(

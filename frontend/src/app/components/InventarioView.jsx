@@ -9,7 +9,7 @@ import { formatCatalogPrice, roundPriceInput } from "../../utils/price.js";
 import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
 import { PRODUCT_ICON_OPTIONS } from "../../utils/productIcons.js";
 
-const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package", unitsPerPack: "", packPrice: "", packTypeId: null, priceTiers: [] };
+const EMPTY_PRODUCT = { name: "", codbarra: "", price: "", cost: "", costPerPack: "", categoryId: null, priceGroupId: null, stock: "", minStock: "", icon: "Package", unitsPerPack: "", packPrice: "", packTypeId: null, priceTiers: [] };
 const PRODUCT_DRAFT_STORAGE_KEY = "descartables-yofre:product-draft";
 
 function loadProductDraft() {
@@ -64,6 +64,7 @@ function toModalItem(product) {
     codbarra: product.codbarra || "",
     price: String(product.price),
     cost: String(product.cost ?? ""),
+    costPerPack: String(product.costPerPack ?? ""),
     stock: String(product.stock),
     minStock: String(product.minStock),
     icon: product.icon || "Package",
@@ -292,6 +293,7 @@ export function InventarioView() {
         isAvailable: productModal.item.isAvailable !== false,
         price: parseFloat(productModal.item.price) || 0,
         cost: parseFloat(productModal.item.cost) || 0,
+        costPerPack: parseFloat(productModal.item.costPerPack) || 0,
         stock: parseInt(productModal.item.stock, 10) || 0,
         minStock: parseInt(productModal.item.minStock, 10) || 0,
         priceGroupId: productModal.item.priceGroupId || null,
@@ -525,7 +527,7 @@ export function InventarioView() {
 
       <div className="bg-surface rounded-xl overflow-hidden border border-foreground/15 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1180px]">
+          <table className="w-full min-w-[1310px]">
             <thead>
               <tr className="border-b border-foreground/15">
                 <th className="p-4 w-10">
@@ -536,7 +538,8 @@ export function InventarioView() {
                 <th className="text-left text-foreground/80 font-bold p-4 whitespace-nowrap">Cód. Barras</th>
                 <th className="text-left text-foreground/80 font-bold p-4">Categoría</th>
                 <th className="text-left text-foreground/80 font-bold p-4 whitespace-nowrap">Proveedor / Colección</th>
-                <th className="text-left text-foreground/80 font-bold p-4">Costo</th>
+                <th className="text-left text-foreground/80 font-bold p-4 whitespace-nowrap">Costo/unidad</th>
+                <th className="text-left text-foreground/80 font-bold p-4 whitespace-nowrap">Costo/bulto</th>
                 <th className="text-left text-foreground/80 font-bold p-4">Precio</th>
                 <th className="text-left text-foreground/80 font-bold p-4">Stock</th>
                 <th className="text-left text-foreground/80 font-bold p-4 whitespace-nowrap">Min. Stock</th>
@@ -546,7 +549,7 @@ export function InventarioView() {
             <tbody>
               {paged.slice.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="p-8 text-center text-foreground/60 font-medium">
+                  <td colSpan={12} className="p-8 text-center text-foreground/60 font-medium">
                     No hay productos para mostrar
                   </td>
                 </tr>
@@ -595,6 +598,9 @@ export function InventarioView() {
                     </td>
                     <td className="p-4 whitespace-nowrap">
                       <span className="text-foreground/80 font-medium">${Number(product.cost || 0).toFixed(2)}</span>
+                    </td>
+                    <td className="p-4 whitespace-nowrap">
+                      <span className="text-foreground/80 font-medium">${Number(product.costPerPack || 0).toFixed(2)}</span>
                     </td>
                     <td className="p-4 whitespace-nowrap">
                       <span className="text-foreground font-black block">${formatCatalogPrice(product.price)}</span>
@@ -741,9 +747,9 @@ export function InventarioView() {
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-foreground/80 font-bold text-sm block mb-2">Costo ($)</label>
+                  <label className="text-foreground/80 font-bold text-sm min-h-10 flex items-end mb-2">Costo por unidad ($)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -759,7 +765,23 @@ export function InventarioView() {
                   />
                 </div>
                 <div>
-                  <label className="text-foreground/80 font-bold text-sm block mb-2">Precio unidad ($)</label>
+                  <label className="text-foreground/80 font-bold text-sm min-h-10 flex items-end mb-2">Costo por bulto ($)</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    value={productModal.item.costPerPack}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^0-9.]/g, "").replace(/^0+(?=\d)/, "");
+                      setProductModal((prev) => ({ ...prev, item: { ...prev.item, costPerPack: val } }));
+                    }}
+                    onFocus={(e) => e.target.select()}
+                    placeholder="0"
+                    className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="text-foreground/80 font-bold text-sm min-h-10 flex items-end mb-2">Precio unidad ($)</label>
                   <input
                     type="text"
                     inputMode="decimal"
@@ -775,8 +797,8 @@ export function InventarioView() {
                     className="w-full bg-surface text-foreground font-bold rounded-xl px-4 py-3 border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
                   />
                 </div>
-                <p className="col-span-2 text-foreground/60 font-medium text-xs">
-                  Los precios de venta se redondean hacia arriba a la próxima decena y se guardan sin centavos. El costo conserva el valor exacto ingresado.
+                <p className="sm:col-span-3 text-foreground/60 font-medium text-xs">
+                  Los precios de venta se redondean hacia arriba a la próxima decena y se guardan sin centavos. Los costos conservan el valor exacto ingresado.
                 </p>
               </div>
               <div className="rounded-xl border border-foreground/15 bg-background/60 p-4 space-y-4">

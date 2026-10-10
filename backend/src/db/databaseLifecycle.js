@@ -153,7 +153,13 @@ const migrations = [
     statements: [
       `UPDATE products
        SET icon = 'PartyPopper'
-       WHERE name LIKE '%MOÑO%'`,
+      WHERE name LIKE '%MOÑO%'`,
+    ],
+  },
+  {
+    id: "20261010_008_product_cost_per_pack",
+    statements: [
+      "ALTER TABLE products ADD COLUMN cost_per_pack REAL NOT NULL DEFAULT 0",
     ],
   },
 ];

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X, Search, UserPlus, IdCard } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
@@ -6,6 +6,8 @@ import api from "../../services/api.js";
 export function CustomerPickerModal({ initialDocument = "", onClose, onSelect }) {
   const [documentInput, setDocumentInput] = useState(initialDocument);
   const [searching, setSearching] = useState(false);
+  const [customers, setCustomers] = useState([]);
+  const [loadingCustomers, setLoadingCustomers] = useState(true);
   const [found, setFound] = useState(null);
   const [notFound, setNotFound] = useState(false);
   const [form, setForm] = useState({ name: "", lastName: "", phone: "" });
@@ -13,11 +15,65 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
 
   const documentValue = documentInput.trim();
 
+  useEffect(() => {
+    let active = true;
+
+    const loadCustomers = async () => {
+      try {
+        const { data } = await api.get("/customers");
+        if (active) setCustomers(data);
+      } catch (err) {
+        if (active) {
+          toast.error(err.response?.data?.message || "No se pudo cargar la lista de clientes");
+        }
+      } finally {
+        if (active) setLoadingCustomers(false);
+      }
+    };
+
+    loadCustomers();
+    return () => { active = false; };
+  }, []);
+
+  const matchingCustomers = useMemo(() => {
+    const term = documentValue.toLocaleLowerCase();
+    if (!term) return [];
+
+    return customers.filter((customer) =>
+      `${customer.name} ${customer.lastName}`.toLocaleLowerCase().includes(term) ||
+      String(customer.document).toLocaleLowerCase().includes(term)
+    );
+  }, [customers, documentValue]);
+
+  const debtors = useMemo(
+    () => customers.filter((customer) => Number(customer.debt || 0) > 0),
+    [customers]
+  );
+
+  const visibleCustomers = documentValue ? matchingCustomers : debtors;
+
   const handleSearch = async () => {
     if (!documentValue || searching) return;
     setSearching(true);
     setFound(null);
     setNotFound(false);
+
+    const existing = customers.find(
+      (customer) => String(customer.document).toLocaleLowerCase() === documentValue.toLocaleLowerCase()
+    );
+    if (existing) {
+      setFound(existing);
+      setSearching(false);
+      return;
+    }
+
+    // La creación sigue requiriendo un DNI/documento; por nombre solo se filtra
+    // la lista visible de clientes para evitar ofrecer un alta con un nombre como documento.
+    if (!/^\d+$/.test(documentValue)) {
+      setSearching(false);
+      return;
+    }
+
     try {
       const { data } = await api.get(`/customers/document/${encodeURIComponent(documentValue)}`);
       setFound(data);
@@ -60,9 +116,13 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
     setNotFound(false);
   };
 
+  const selectCustomer = (selected) => {
+    onSelect(selected);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-      <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl">
+      <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl max-h-[92vh] flex flex-col">
         <div className="p-6 border-b border-surface flex items-center justify-between">
           <h2 className="text-primary font-bold text-xl flex items-center gap-2">
             <IdCard size={22} /> Cliente de la cuenta
@@ -72,9 +132,9 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto">
           <div>
-            <label className="text-foreground/80 font-bold text-sm block mb-2">DNI / Documento</label>
+            <label className="text-foreground/80 font-bold text-sm block mb-2">Nombre, apellido o DNI</label>
             <div className="flex gap-2">
               <input
                 type="text"
@@ -82,7 +142,7 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
                 onChange={(e) => { setDocumentInput(e.target.value); resetSearch(); }}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                 autoFocus
-                placeholder="Ej. 30123456"
+                placeholder="Ej. Juan Pérez o 30123456"
                 className="flex-1 bg-surface text-foreground placeholder-foreground/50 font-bold rounded-xl px-4 py-3 border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
               />
               <button
@@ -97,13 +157,60 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
           </div>
 
           {found && (
-            <div className="bg-surface border border-foreground/15 rounded-xl p-4 space-y-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => selectCustomer(found)}
+              className="w-full text-left bg-surface hover:bg-primary/10 border border-foreground/15 rounded-xl p-4 space-y-1 shadow-sm transition-colors"
+            >
               <p className="text-foreground font-black text-lg">{found.name} {found.lastName}</p>
               <p className="text-foreground/70 font-medium text-sm">DNI {found.document}</p>
               {found.phone && <p className="text-foreground/70 font-medium text-sm">Tel. {found.phone}</p>}
               <p className="text-secondary font-bold text-sm pt-1">
                 Deuda actual: ${Number(found.debt || 0).toFixed(2)}
               </p>
+              <p className="text-primary font-bold text-sm pt-1">Seleccionar cliente</p>
+            </button>
+          )}
+
+          {!found && !notFound && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-foreground/80 font-bold text-sm">
+                  {documentValue ? "Resultados de búsqueda" : "Deudores"}
+                </p>
+                {!documentValue && !loadingCustomers && (
+                  <span className="text-foreground/60 font-medium text-xs">{debtors.length} cliente{debtors.length === 1 ? "" : "s"}</span>
+                )}
+              </div>
+
+              {loadingCustomers ? (
+                <p className="text-foreground/60 font-medium text-sm py-3">Cargando clientes...</p>
+              ) : visibleCustomers.length === 0 ? (
+                <p className="text-foreground/60 font-medium text-sm py-3">
+                  {documentValue ? "No se encontraron clientes con esa búsqueda." : "No hay clientes con deuda pendiente."}
+                </p>
+              ) : (
+                <div className="max-h-56 overflow-y-auto rounded-xl border border-foreground/15 divide-y divide-foreground/10">
+                  {visibleCustomers.map((customer) => (
+                    <button
+                      key={customer.id}
+                      type="button"
+                      onClick={() => selectCustomer(customer)}
+                      className="w-full text-left bg-surface hover:bg-primary/10 p-3 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-foreground font-bold truncate">{customer.name} {customer.lastName}</p>
+                          <p className="text-foreground/70 font-medium text-sm">DNI {customer.document}</p>
+                        </div>
+                        <span className="text-secondary font-black text-sm shrink-0">
+                          ${Number(customer.debt || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -163,11 +270,11 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
             </button>
           ) : (
             <button
-              onClick={() => onSelect(found)}
+              onClick={() => selectCustomer(found)}
               disabled={!found}
               className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 text-foreground font-bold py-3 rounded-xl transition-all shadow-md"
             >
-              Usar cliente
+              Elegir
             </button>
           )}
         </div>

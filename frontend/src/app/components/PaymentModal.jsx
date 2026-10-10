@@ -417,7 +417,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
                       className="w-full bg-background hover:bg-surface text-foreground font-bold py-3 rounded-lg border border-foreground/15 transition-all shadow-sm flex items-center justify-center gap-2"
                     >
                       <IdCard size={18} />
-                      Buscar cliente por DNI
+                      Buscar cliente o ver deudores
                     </button>
                   )}
                 </div>
