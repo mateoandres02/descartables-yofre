@@ -6,22 +6,19 @@ No hay QZ Tray, certificados ni claves de impresión en Vercel. Como un navegado
 
 1. Instalar el controlador de la impresora y comprobar que aparezca en **Impresoras y escáneres** de Windows.
 2. Copiar la carpeta `printing-agent` a esa computadora.
-3. Editar `printing-agent/agent.config.json` con las URLs reales, sin barra final:
+3. Verificar `printing-agent/agent.config.json`. El repositorio ya viene configurado para producción:
 
 ```json
 {
   "port": 9108,
-  "appOrigin": "https://tu-frontend.vercel.app",
-  "apiUrl": "https://tu-backend.vercel.app/api"
+  "appOrigin": "https://descartables-yofre.vercel.app",
+  "apiUrl": "https://descartables-yofre-backend.vercel.app/api"
 }
 ```
 
-4. Abrir PowerShell en esa carpeta y ejecutar:
+4. Hacer doble clic una sola vez en `instalar-agente.cmd`. El instalador copia el agente a `%LOCALAPPDATA%\DescartablesYofre\PrintAgent`, lo inicia oculto y lo registra para arrancar automáticamente con cada inicio de sesión de Windows. El usuario no necesita abrir consolas ni repetir este paso diariamente.
 
-```powershell
-powershell.exe -ExecutionPolicy Bypass -File .\start-print-agent.ps1
-```
+5. Abrir la web de producción. Si el navegador solicita permiso para acceder a dispositivos o a la red local, permitirlo para este sitio.
+6. Ingresar a la app como administrador, ir a **Configuración → Impresora térmica**, seleccionar la impresora y usar **Imprimir prueba**.
 
-5. Ingresar a la app como administrador, ir a **Configuración → Impresora térmica**, seleccionar la impresora y usar **Imprimir prueba**.
-
-El proceso de PowerShell debe permanecer activo mientras se use la caja. El envío al spooler no abre ventanas, vista previa, selector de impresora ni diálogo de Windows. La confirmación en la app indica que Windows aceptó el trabajo; no puede garantizar que el papel haya salido.
+El agente queda ejecutándose en segundo plano. Si se detiene inesperadamente, su supervisor lo vuelve a iniciar. Los registros de diagnóstico quedan en `%LOCALAPPDATA%\DescartablesYofre\PrintAgent\logs`. El envío al spooler no abre ventanas, vista previa, selector de impresora ni diálogo de Windows.

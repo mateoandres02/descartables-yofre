@@ -36,7 +36,7 @@ export function enqueuePrint(transaction) {
   const task = async () => {
     const printer = getSelectedPrinter();
     if (!printer) throw new ThermalPrinterError("Elegí una impresora térmica en Configuración antes de imprimir.");
-    await request("/print", { method: "POST", body: JSON.stringify({ printer, ticket: ticketPayload(transaction) }) });
+    return request("/print", { method: "POST", body: JSON.stringify({ printer, ticket: ticketPayload(transaction) }) });
   };
   const result = queue.then(task, task);
   queue = result.catch(() => undefined);

@@ -26,7 +26,7 @@ function PrinterPanel() {
   };
   const test = async () => {
     setTesting(true);
-    try { await printTest(); toast.success("Ticket de prueba enviado a la impresora"); }
+    try { const result = await printTest(); toast.success(`Ticket enviado a ${result.printer}`); }
     catch (error) { toast.error("No se pudo imprimir la prueba", { description: error.message }); }
     finally { setTesting(false); }
   };
@@ -38,8 +38,8 @@ function PrinterPanel() {
         <button onClick={refresh} disabled={checking} className="p-2 bg-elevated rounded-lg text-primary disabled:opacity-50" title="Actualizar impresoras"><RefreshCw size={18} className={checking ? "animate-spin" : ""} /></button>
       </div>
       <div className="p-6 space-y-4">
-        <p className={`text-sm font-bold ${status.connected ? "text-success" : "text-red-500"}`}>{status.connected ? "QZ Tray conectado" : "QZ Tray no conectado"}</p>
-        {!status.connected && <p className="text-foreground/70 text-xs font-medium">Instalá y abrí QZ Tray en esta computadora. Para imprimir sin diálogos, el servidor también debe tener el certificado confiable configurado.</p>}
+        <p className={`text-sm font-bold ${status.connected ? "text-success" : "text-red-500"}`}>{status.connected ? "Agente local conectado" : "Agente local desconectado"}</p>
+        {!status.connected && <p className="text-foreground/70 text-xs font-medium">Iniciá el agente local de impresión en esta computadora y luego actualizá la lista. Los tickets se envían directamente a Windows, sin diálogos.</p>}
         <label className="block text-foreground/80 font-bold text-sm">Impresora</label>
         <select value={status.selected} onChange={select} disabled={!status.connected} className="w-full bg-elevated text-foreground font-bold rounded-lg px-3 py-3 border border-foreground/15 disabled:opacity-50">
           <option value="">Seleccionar impresora…</option>

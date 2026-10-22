@@ -5,30 +5,78 @@ $config = Get-Content (Join-Path $PSScriptRoot "agent.config.json") -Raw | Conve
 $listener = [System.Net.HttpListener]::new()
 $listener.Prefixes.Add("http://127.0.0.1:$($config.port)/")
 
-Add-Type @"
+Add-Type -ReferencedAssemblies System.Drawing @"
 using System;
-using System.Runtime.InteropServices;
-public static class RawPrinter {
-  [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public class DOCINFO { [MarshalAs(UnmanagedType.LPWStr)] public string pDocName; [MarshalAs(UnmanagedType.LPWStr)] public string pOutputFile; [MarshalAs(UnmanagedType.LPWStr)] public string pDataType; }
-  [DllImport("winspool.drv", CharSet=CharSet.Unicode, SetLastError=true)] public static extern bool OpenPrinter(string name, out IntPtr handle, IntPtr defaults);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool ClosePrinter(IntPtr handle);
-  [DllImport("winspool.drv", CharSet=CharSet.Unicode, SetLastError=true)] public static extern int StartDocPrinter(IntPtr handle, int level, [In] DOCINFO doc);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndDocPrinter(IntPtr handle);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool StartPagePrinter(IntPtr handle);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool EndPagePrinter(IntPtr handle);
-  [DllImport("winspool.drv", SetLastError=true)] public static extern bool WritePrinter(IntPtr handle, byte[] bytes, int count, out int written);
+using System.Drawing;
+using System.Drawing.Printing;
+
+public static class SilentTicketPrinter {
+  public static string Print(string printerName, string text) {
+    using (PrintDocument document = new PrintDocument()) {
+      document.PrinterSettings.PrinterName = printerName;
+      if (!document.PrinterSettings.IsValid) {
+        throw new InvalidOperationException("La impresora seleccionada no es válida para Windows.");
+      }
+
+      string documentName = "Ticket Yofre " + DateTime.Now.ToString("yyyyMMdd-HHmmss-fff");
+      string[] lines = text.Replace("\r\n", "\n").Split('\n');
+      int paperHeight = Math.Max(300, Math.Min(12000, lines.Length * 18 + 80));
+
+      document.DocumentName = documentName;
+      document.PrintController = new StandardPrintController();
+      document.DefaultPageSettings.Margins = new Margins(4, 4, 4, 4);
+      document.DefaultPageSettings.PaperSize = new PaperSize("Ticket 58 mm", 228, paperHeight);
+      document.OriginAtMargins = true;
+
+      document.PrintPage += delegate(object sender, PrintPageEventArgs e) {
+        using (Font regular = new Font("Consolas", 7.0f, FontStyle.Regular))
+        using (Font bold = new Font("Consolas", 7.0f, FontStyle.Bold))
+        using (StringFormat format = new StringFormat(StringFormat.GenericTypographic)) {
+          format.FormatFlags |= StringFormatFlags.NoWrap;
+          float y = 0;
+          float lineHeight = regular.GetHeight(e.Graphics) + 1;
+          float width = e.MarginBounds.Width;
+          for (int i = 0; i < lines.Length; i++) {
+            Font font = i == 0 ? bold : regular;
+            e.Graphics.DrawString(lines[i], font, Brushes.Black, new RectangleF(0, y, width, lineHeight), format);
+            y += lineHeight;
+          }
+          e.HasMorePages = false;
+        }
+      };
+
+      document.Print();
+      return documentName;
+    }
+  }
 }
 "@
 
 function Write-Response($context, $status, $body) {
+  $response = $context.Response
+  $response.StatusCode = $status
+  $response.ContentType = "application/json; charset=utf-8"
+  $response.Headers["Access-Control-Allow-Origin"] = $config.appOrigin
+  $response.Headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+  $response.Headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+  $response.Headers["Access-Control-Allow-Private-Network"] = "true"
+
+  # Una respuesta 204 no puede contener cuerpo. Para el resto, HttpListener
+  # exige declarar el tamaño antes de escribir o lanza ProtocolViolationException.
+  if ($status -eq 204) {
+    $response.ContentLength64 = 0
+    $response.Close()
+    return
+  }
+
   $json = $body | ConvertTo-Json -Compress -Depth 8
   $bytes = [Text.Encoding]::UTF8.GetBytes($json)
-  $context.Response.StatusCode = $status
-  $context.Response.ContentType = "application/json; charset=utf-8"
-  $context.Response.Headers["Access-Control-Allow-Origin"] = $config.appOrigin
-  $context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
-  $context.Response.OutputStream.Write($bytes, 0, $bytes.Length)
-  $context.Response.Close()
+  $response.ContentLength64 = $bytes.Length
+  try {
+    $response.OutputStream.Write($bytes, 0, $bytes.Length)
+  } finally {
+    $response.OutputStream.Close()
+  }
 }
 
 function Assert-Authorized($request) {
@@ -40,8 +88,6 @@ function Assert-Authorized($request) {
   } catch { throw "Sesión no autorizada." }
 }
 
-function Add-Text($buffer, $encoding, $text) { [void]$buffer.AddRange($encoding.GetBytes([string]$text)) }
-function Add-Bytes($buffer, [byte[]]$bytes) { [void]$buffer.AddRange($bytes) }
 function Money($value) { return (('{0:N2}' -f [double]$value).Replace(",", "X").Replace(".", ",").Replace("X", ".")) }
 function Wrap($text, $width = 32) {
   $words = ([string]$text -split "\s+") | Where-Object { $_ }
@@ -58,33 +104,24 @@ function Row($left, $right) {
   $out = $first + (" " * [Math]::Max(1, 32-$first.Length-$right.Length)) + $right + "`n"
   if ($lines.Count -gt 1) { $out += (($lines | Select-Object -Skip 1) -join "`n") + "`n" }; return $out
 }
-function Add-Logo($buffer, $url) {
-  if (!$url -or !$url.StartsWith($config.appOrigin)) { return }
-  $file = Join-Path $env:TEMP ("yofre-logo-" + [guid]::NewGuid() + ".img")
-  try {
-    Invoke-WebRequest -Uri $url -OutFile $file -UseBasicParsing
-    Add-Type -AssemblyName System.Drawing
-    $source = [System.Drawing.Image]::FromFile($file); $width = [Math]::Min(320, $source.Width); $height = [Math]::Max(1, [int]($source.Height * $width / $source.Width))
-    $bmp = [System.Drawing.Bitmap]::new($width, $height); $graphics = [System.Drawing.Graphics]::FromImage($bmp); $graphics.DrawImage($source, 0, 0, $width, $height); $graphics.Dispose(); $source.Dispose()
-    $rowBytes = [Math]::Ceiling($width / 8); Add-Bytes $buffer ([byte[]](0x1D,0x76,0x30,0x00,($rowBytes -band 255),($rowBytes -shr 8),($height -band 255),($height -shr 8)))
-    for ($y=0; $y -lt $height; $y++) { for ($xb=0; $xb -lt $rowBytes; $xb++) { $value=0; for ($bit=0; $bit -lt 8; $bit++) { $x=$xb*8+$bit; if ($x -lt $width) { $p=$bmp.GetPixel($x,$y); if ((0.299*$p.R + 0.587*$p.G + 0.114*$p.B) -lt 180) { $value = $value -bor (128 -shr $bit) } } }; [void]$buffer.Add([byte]$value) } }
-    $bmp.Dispose()
-  } catch { Write-Warning "No se pudo cargar el logo: $_" } finally { Remove-Item $file -Force -ErrorAction SilentlyContinue }
+function Center($text, $width = 32) {
+  $value = [string]$text
+  if ($value.Length -ge $width) { return $value }
+  return (" " * [Math]::Floor(($width - $value.Length) / 2)) + $value
 }
-function Ticket-Bytes($ticket) {
-  $cp858 = [Text.Encoding]::GetEncoding(858); $b = [Collections.Generic.List[byte]]::new(); $line = ("-" * 32) + "`n"
-  Add-Bytes $b ([byte[]](0x1B,0x40,0x1B,0x74,0x13,0x1B,0x45,0x01,0x1B,0x61,0x01)); Add-Logo $b $ticket.logoUrl
-  Add-Text $b $cp858 "DESCARTABLES YOFRE`nFecha: $($ticket.date)  $($ticket.time)`nVenta #$($ticket.id)`n$line"; Add-Bytes $b ([byte[]](0x1B,0x61,0x00))
+function Ticket-Text($ticket) {
+  $text = [Text.StringBuilder]::new(); $line = "-" * 32
+  [void]$text.AppendLine((Center "DESCARTABLES YOFRE"))
+  [void]$text.AppendLine("Fecha: $($ticket.date)  $($ticket.time)")
+  [void]$text.AppendLine("Venta #$($ticket.id)")
+  [void]$text.AppendLine($line)
   $subtotal = 0
-  foreach ($item in @($ticket.items)) { foreach ($part in @(Wrap $item.productName 32)) { Add-Text $b $cp858 "$part`n" }; Add-Text $b $cp858 (Row "$($item.quantity) x $(Money $item.price)" (Money $item.total)); $subtotal += [double]$item.price * [double]$item.quantity }
-  Add-Text $b $cp858 "$line$(Row 'Subtotal' (Money $subtotal))"; $discount = [Math]::Max(0, $subtotal - [double]$ticket.total); if ($discount -gt 0.005) { Add-Text $b $cp858 (Row 'Descuento / promoción' "-$(Money $discount)") }
-  foreach ($payment in @($ticket.payments)) { if ([double]$payment.surchargePercent -gt 0) { Add-Text $b $cp858 (Row "Recargo $($payment.methodName)" (Money ([double]$payment.amount-[double]$payment.baseAmount))) } }
-  Add-Bytes $b ([byte[]](0x1B,0x21,0x30)); Add-Text $b $cp858 (Row 'TOTAL FINAL' (Money $ticket.total)); Add-Bytes $b ([byte[]](0x1B,0x21,0x00)); if (@($ticket.payments).Count) { Add-Text $b $cp858 "Forma de pago:`n"; foreach ($payment in @($ticket.payments)) { Add-Text $b $cp858 "$($payment.methodName): $(Money $payment.amount)`n" } }
-  Add-Bytes $b ([byte[]](0x1B,0x61,0x01)); Add-Text $b $cp858 "$line¡Gracias por su compra!`n`n`n"; return $b.ToArray()
-}
-function Send-Raw($printer, [byte[]]$bytes) {
-  $handle = [IntPtr]::Zero; if (![RawPrinter]::OpenPrinter($printer, [ref]$handle, [IntPtr]::Zero)) { throw "No se pudo abrir la impresora seleccionada." }
-  try { $doc = [RawPrinter+DOCINFO]::new(); $doc.pDocName = "Ticket Descartables Yofre"; $doc.pDataType = "RAW"; if ([RawPrinter]::StartDocPrinter($handle, 1, $doc) -le 0) { throw "No se pudo iniciar el trabajo de impresión." }; [RawPrinter]::StartPagePrinter($handle) | Out-Null; $written = 0; if (![RawPrinter]::WritePrinter($handle, $bytes, $bytes.Length, [ref]$written) -or $written -ne $bytes.Length) { throw "No se pudo enviar el ticket a Windows." }; [RawPrinter]::EndPagePrinter($handle) | Out-Null; [RawPrinter]::EndDocPrinter($handle) | Out-Null } finally { [RawPrinter]::ClosePrinter($handle) | Out-Null }
+  foreach ($item in @($ticket.items)) { foreach ($part in @(Wrap $item.productName 32)) { [void]$text.AppendLine($part) }; [void]$text.Append((Row "$($item.quantity) x $(Money $item.price)" (Money $item.total))); $subtotal += [double]$item.price * [double]$item.quantity }
+  [void]$text.AppendLine($line); [void]$text.Append((Row 'Subtotal' (Money $subtotal))); $discount = [Math]::Max(0, $subtotal - [double]$ticket.total); if ($discount -gt 0.005) { [void]$text.Append((Row 'Descuento / promoción' "-$(Money $discount)")) }
+  foreach ($payment in @($ticket.payments)) { if ([double]$payment.surchargePercent -gt 0) { [void]$text.Append((Row "Recargo $($payment.methodName)" (Money ([double]$payment.amount-[double]$payment.baseAmount)))) } }
+  [void]$text.Append((Row 'TOTAL FINAL' (Money $ticket.total))); if (@($ticket.payments).Count) { [void]$text.AppendLine("Forma de pago:"); foreach ($payment in @($ticket.payments)) { [void]$text.AppendLine("$($payment.methodName): $(Money $payment.amount)") } }
+  [void]$text.AppendLine($line); [void]$text.AppendLine((Center "¡Gracias por su compra!")); [void]$text.AppendLine(); [void]$text.AppendLine()
+  return $text.ToString()
 }
 
 $listener.Start(); Write-Host "Agente de impresión listo en http://127.0.0.1:$($config.port)"
@@ -94,7 +131,7 @@ while ($listener.IsListening) {
     if ($request.HttpMethod -eq "OPTIONS") { Write-Response $context 204 @{}; continue }
     Assert-Authorized $request
     if ($request.HttpMethod -eq "GET" -and $request.Url.AbsolutePath -eq "/printers") { Write-Response $context 200 @{ printers = @(Get-Printer | Select-Object -ExpandProperty Name) }; continue }
-    if ($request.HttpMethod -eq "POST" -and $request.Url.AbsolutePath -eq "/print") { $body = (New-Object IO.StreamReader($request.InputStream)).ReadToEnd() | ConvertFrom-Json; if (!(Get-Printer -Name $body.printer -ErrorAction SilentlyContinue)) { throw "La impresora seleccionada no existe." }; Send-Raw $body.printer (Ticket-Bytes $body.ticket); Write-Response $context 202 @{ accepted = $true }; continue }
+    if ($request.HttpMethod -eq "POST" -and $request.Url.AbsolutePath -eq "/print") { $body = (New-Object IO.StreamReader($request.InputStream)).ReadToEnd() | ConvertFrom-Json; if (!(Get-Printer -Name $body.printer -ErrorAction SilentlyContinue)) { throw "La impresora seleccionada no existe." }; $document = [SilentTicketPrinter]::Print($body.printer, (Ticket-Text $body.ticket)); Write-Host "$document enviado a $($body.printer) mediante el controlador de Windows"; Write-Response $context 202 @{ accepted = $true; printer = $body.printer; document = $document }; continue }
     Write-Response $context 404 @{ message = "Ruta no encontrada." }
   } catch { Write-Response $context 403 @{ message = $_.Exception.Message } }
 }

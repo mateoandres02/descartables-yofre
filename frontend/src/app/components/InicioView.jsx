@@ -232,7 +232,19 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions, 
                           <p className="text-foreground/70 font-medium text-sm">{sale.time} • {sale.items} producto{sale.items !== 1 ? "s" : ""}</p>
                         </div>
                       </div>
-                      <span className="text-foreground font-black text-lg">+${sale.total.toFixed(2)}</span>
+                      <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 shrink-0">
+                        <span className="text-foreground font-black text-lg">+${sale.total.toFixed(2)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleReprint(sale.id)}
+                          disabled={printingId === sale.id}
+                          className="bg-primary/10 hover:bg-primary/20 text-primary disabled:text-foreground/50 disabled:bg-elevated px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors"
+                          title={`Reimprimir ticket de la venta #${sale.id}`}
+                        >
+                          <Printer size={15} />
+                          {printingId === sale.id ? "Imprimiendo..." : "Reimprimir"}
+                        </button>
+                      </div>
                     </div>
                     {sale.details.length > 0 && (
                       <div className="ml-14 rounded-lg p-3 border border-foreground/15 bg-background">
