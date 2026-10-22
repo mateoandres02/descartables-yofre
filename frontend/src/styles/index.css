@@ -121,6 +121,113 @@ button:disabled {
   display: none;
 }
 
+/* El ticket solo existe durante la impresión. Chrome iniciado con
+   --kiosk-printing lo envía directamente a la impresora predeterminada. */
+.yofre-print-ticket {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: auto;
+    margin: 0;
+  }
+
+  html,
+  body {
+    width: 58mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+  }
+
+  body > *:not(#yofre-print-ticket) {
+    display: none !important;
+  }
+
+  #yofre-print-ticket {
+    display: block !important;
+    box-sizing: border-box;
+    width: 54mm;
+    margin: 0;
+    padding: 2mm;
+    color: #000 !important;
+    background: #fff !important;
+    font-family: "Arial Black", Arial, sans-serif;
+    font-size: 10pt;
+    font-weight: 900;
+    line-height: 1.22;
+    overflow-wrap: anywhere;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  #yofre-print-ticket * {
+    box-sizing: border-box;
+    color: #000 !important;
+    font-weight: 900;
+  }
+
+  .ticket-logo {
+    display: block;
+    width: 38mm;
+    max-height: 24mm;
+    margin: 0 auto 1.5mm;
+    object-fit: contain;
+    filter: grayscale(1) contrast(2.2);
+  }
+
+  .ticket-title,
+  .ticket-center,
+  .ticket-thanks {
+    margin: 0;
+    text-align: center;
+  }
+
+  .ticket-title {
+    font-size: 12pt;
+  }
+
+  .ticket-separator {
+    margin: 1.5mm 0;
+    border-top: 1.2mm solid #000;
+  }
+
+  .ticket-product {
+    margin-bottom: 1.5mm;
+  }
+
+  .ticket-product-name,
+  .ticket-payment-title {
+    margin-top: 1mm;
+  }
+
+  .ticket-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 2mm;
+  }
+
+  .ticket-row > span:last-child {
+    flex-shrink: 0;
+    text-align: right;
+  }
+
+  .ticket-total {
+    margin: 2mm 0;
+    padding: 1.5mm 0;
+    border-top: 1mm solid #000;
+    border-bottom: 1mm solid #000;
+    font-size: 14pt;
+  }
+
+  .ticket-thanks {
+    margin: 2mm 0 5mm;
+    font-size: 11pt;
+  }
+}
+
 /* Safe area para dispositivos con notch (iOS) */
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0px);

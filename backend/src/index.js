@@ -18,7 +18,6 @@ import subscriptionRoutes from "./routes/subscription.routes.js";
 import priceGroupRoutes from "./routes/priceGroup.routes.js";
 import packTypeRoutes from "./routes/packType.routes.js";
 import customerRoutes from "./routes/customer.routes.js";
-import printingRoutes from "./routes/printing.routes.js";
 
 await initializeDatabase();
 
@@ -82,7 +81,6 @@ app.use("/api/subscription", subscriptionRoutes);
 app.use("/api/price-groups", priceGroupRoutes);
 app.use("/api/pack-types", packTypeRoutes);
 app.use("/api/customers", customerRoutes);
-app.use("/api/printing", printingRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 

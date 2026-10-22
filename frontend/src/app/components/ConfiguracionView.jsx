@@ -1,29 +1,22 @@
 import { useState, useEffect, useMemo } from "react";
-import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Bookmark, Layers, Percent, Package, Printer, RefreshCw } from "lucide-react";
+import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Bookmark, Layers, Percent, Package, Printer } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
 import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
-import { getPrinterStatus, printTest, setSelectedPrinter } from "../../services/thermalPrinter.js";
+import { getPrinterStatus, printTest } from "../../services/thermalPrinter.js";
 
 const CONFIG_PAGE_SIZE = 8;
 
 function PrinterPanel() {
   const [status, setStatus] = useState({ connected: false, printers: [], selected: "" });
-  const [checking, setChecking] = useState(false);
   const [testing, setTesting] = useState(false);
 
   const refresh = async () => {
-    setChecking(true);
     const next = await getPrinterStatus();
     setStatus(next);
-    setChecking(false);
   };
   useEffect(() => { refresh(); }, []);
-  const select = (event) => {
-    setSelectedPrinter(event.target.value);
-    setStatus((current) => ({ ...current, selected: event.target.value, selectedAvailable: true }));
-  };
   const test = async () => {
     setTesting(true);
     try { const result = await printTest(); toast.success(`Ticket enviado a ${result.printer}`); }
@@ -35,17 +28,14 @@ function PrinterPanel() {
     <div className="bg-surface rounded-xl border border-foreground/15 overflow-hidden shadow-sm flex flex-col">
       <div className="p-6 border-b border-foreground/15 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3"><Printer className="text-foreground" size={24} /><div><h2 className="text-primary text-xl font-bold">Impresora térmica</h2><p className="text-foreground/60 font-medium text-xs mt-0.5">Configuración local para tickets de 58 mm</p></div></div>
-        <button onClick={refresh} disabled={checking} className="p-2 bg-elevated rounded-lg text-primary disabled:opacity-50" title="Actualizar impresoras"><RefreshCw size={18} className={checking ? "animate-spin" : ""} /></button>
       </div>
       <div className="p-6 space-y-4">
-        <p className={`text-sm font-bold ${status.connected ? "text-success" : "text-red-500"}`}>{status.connected ? "Agente local conectado" : "Agente local desconectado"}</p>
-        {!status.connected && <p className="text-foreground/70 text-xs font-medium">Iniciá el agente local de impresión en esta computadora y luego actualizá la lista. Los tickets se envían directamente a Windows, sin diálogos.</p>}
-        <label className="block text-foreground/80 font-bold text-sm">Impresora</label>
-        <select value={status.selected} onChange={select} disabled={!status.connected} className="w-full bg-elevated text-foreground font-bold rounded-lg px-3 py-3 border border-foreground/15 disabled:opacity-50">
-          <option value="">Seleccionar impresora…</option>
-          {status.printers.map((printer) => <option key={printer} value={printer}>{printer}</option>)}
-        </select>
-        <button onClick={test} disabled={!status.connected || !status.selected || testing} className="w-full bg-secondary hover:brightness-125 disabled:bg-elevated disabled:text-foreground/50 text-foreground font-bold py-3 rounded-lg flex items-center justify-center gap-2">
+        <p className={`text-sm font-bold ${status.connected ? "text-success" : "text-red-500"}`}>{status.connected ? "Impresión de Chrome disponible" : "Impresión no disponible"}</p>
+        <div className="bg-elevated border border-foreground/15 rounded-lg p-3">
+          <p className="text-foreground font-bold text-sm">Impresora predeterminada de Windows</p>
+          <p className="text-foreground/65 text-xs font-medium mt-1">Usá el acceso directo “Descartables Yofre” y dejá la TP-POS58 como predeterminada para imprimir sin ventanas.</p>
+        </div>
+        <button onClick={test} disabled={!status.connected || testing} className="w-full bg-secondary hover:brightness-125 disabled:bg-elevated disabled:text-foreground/50 text-foreground font-bold py-3 rounded-lg flex items-center justify-center gap-2">
           <Printer size={18} /> {testing ? "Imprimiendo..." : "Imprimir prueba"}
         </button>
       </div>

@@ -1,24 +1,19 @@
-# Impresión térmica por PowerShell
+# Impresión térmica silenciosa con Google Chrome
 
-No hay QZ Tray, certificados ni claves de impresión en Vercel. Como un navegador no puede ejecutar PowerShell directamente, la computadora que tiene conectada la TP-POS58-USB ejecuta un agente local muy pequeño. Este agente acepta conexiones únicamente desde `127.0.0.1`, valida el origen de la web y verifica la sesión contra el backend antes de enviar ESC/POS RAW al spooler de Windows.
+La aplicación imprime mediante el modo `--kiosk-printing` de Google Chrome. No requiere QZ Tray, certificados, agentes locales ni procesos PowerShell ejecutándose permanentemente.
 
-## Una vez por computadora
+## Instalación única en la computadora de caja
 
-1. Instalar el controlador de la impresora y comprobar que aparezca en **Impresoras y escáneres** de Windows.
-2. Copiar la carpeta `printing-agent` a esa computadora.
-3. El paquete ya viene configurado para producción en `printing-agent/archivos-internos/agent.config.json`:
+1. Instalar el controlador de la Global TP-POS58-USB y confirmar que Windows la reconoce.
+2. Descargar o copiar la carpeta `chrome-silent-printing` en esa computadora.
+3. Hacer doble clic en `INSTALAR-ACCESO-DIRECTO-CHROME.cmd`.
+4. El instalador busca Chrome, intenta dejar la impresora POS como predeterminada cuando detecta una única opción y crea **Descartables Yofre** en el escritorio.
+5. Abrir siempre el sistema desde ese acceso directo. La primera vez será necesario iniciar sesión porque utiliza un perfil de Chrome exclusivo para la caja.
 
-```json
-{
-  "port": 9108,
-  "appOrigin": "https://descartables-yofre.vercel.app",
-  "apiUrl": "https://descartables-yofre-backend.vercel.app/api"
-}
-```
+Al confirmar o reimprimir una venta, Chrome envía el ticket directamente a la impresora predeterminada con sus ajustes actuales. No abre la vista previa ni pide seleccionar una impresora.
 
-4. Hacer doble clic una sola vez en `INSTALAR-IMPRESORA-UNA-VEZ.cmd`. Es el único archivo que se debe ejecutar. El instalador copia los archivos técnicos desde `archivos-internos` a `%LOCALAPPDATA%\DescartablesYofre\PrintAgent`, inicia el agente oculto y lo registra para arrancar automáticamente con cada inicio de sesión de Windows. El usuario no necesita abrir consolas ni repetir este paso diariamente.
+## Si imprime en otra impresora
 
-5. Abrir la web de producción. Si el navegador solicita permiso para acceder a dispositivos o a la red local, permitirlo para este sitio.
-6. Ingresar a la app como administrador, ir a **Configuración → Impresora térmica**, seleccionar la impresora y usar **Imprimir prueba**.
+En Windows, abrir **Configuración → Bluetooth y dispositivos → Impresoras y escáneres**, seleccionar la TP-POS58 y establecerla como predeterminada. Conviene desactivar “Permitir que Windows administre mi impresora predeterminada”.
 
-El agente queda ejecutándose en segundo plano. Si se detiene inesperadamente, su supervisor lo vuelve a iniciar. Los registros de diagnóstico quedan en `%LOCALAPPDATA%\DescartablesYofre\PrintAgent\logs`. El envío al spooler no abre ventanas, vista previa, selector de impresora ni diálogo de Windows.
+El navegador no permite que una página web enumere impresoras instaladas. Por eso la aplicación muestra “Impresora predeterminada de Windows” y la selección se realiza una sola vez en Windows.
