@@ -6,7 +6,7 @@ No hay QZ Tray, certificados ni claves de impresión en Vercel. Como un navegado
 
 1. Instalar el controlador de la impresora y comprobar que aparezca en **Impresoras y escáneres** de Windows.
 2. Copiar la carpeta `printing-agent` a esa computadora.
-3. Verificar `printing-agent/agent.config.json`. El repositorio ya viene configurado para producción:
+3. El paquete ya viene configurado para producción en `printing-agent/archivos-internos/agent.config.json`:
 
 ```json
 {
@@ -16,7 +16,7 @@ No hay QZ Tray, certificados ni claves de impresión en Vercel. Como un navegado
 }
 ```
 
-4. Hacer doble clic una sola vez en `instalar-agente.cmd`. El instalador copia el agente a `%LOCALAPPDATA%\DescartablesYofre\PrintAgent`, lo inicia oculto y lo registra para arrancar automáticamente con cada inicio de sesión de Windows. El usuario no necesita abrir consolas ni repetir este paso diariamente.
+4. Hacer doble clic una sola vez en `INSTALAR-IMPRESORA-UNA-VEZ.cmd`. Es el único archivo que se debe ejecutar. El instalador copia los archivos técnicos desde `archivos-internos` a `%LOCALAPPDATA%\DescartablesYofre\PrintAgent`, inicia el agente oculto y lo registra para arrancar automáticamente con cada inicio de sesión de Windows. El usuario no necesita abrir consolas ni repetir este paso diariamente.
 
 5. Abrir la web de producción. Si el navegador solicita permiso para acceder a dispositivos o a la red local, permitirlo para este sitio.
 6. Ingresar a la app como administrador, ir a **Configuración → Impresora térmica**, seleccionar la impresora y usar **Imprimir prueba**.
