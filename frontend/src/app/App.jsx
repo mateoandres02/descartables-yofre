@@ -119,6 +119,7 @@ export default function App() {
       items: (data.items || []).map((i) => ({ name: i.productName || i.name, quantity: i.quantity, total: i.total })),
     };
     setTransactions((prev) => [normalized, ...prev]);
+    return data;
   }
 
   function handleLogin(loggedUser) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, Activity, Clock, Lock, Unlock, Receipt, Package, Wallet, BookUp, PackageMinus, X } from "lucide-react";
+import { TrendingUp, Activity, Clock, Lock, Unlock, Receipt, Package, Wallet, BookUp, PackageMinus, X, Printer } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
@@ -7,6 +7,7 @@ import { formatStock } from "../../utils/pack.js";
 import { ACCOUNT_METHOD_NAME } from "../constants.js";
 import { ClosureModal } from "./ClosureModal.jsx";
 import { OpenCajaModal } from "./OpenCajaModal.jsx";
+import { enqueuePrint } from "../../services/thermalPrinter.js";
 
 export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions, suggestedInitialCash = 0 }) {
   const [showOpenModal, setShowOpenModal] = useState(false);
@@ -20,6 +21,7 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions, 
   const [submittingWithdraw, setSubmittingWithdraw] = useState(false);
   const [searchWithdraw, setSearchWithdraw] = useState("");
   const [loading, setLoading] = useState(true);
+  const [printingId, setPrintingId] = useState(null);
 
   const [registerData, setRegisterData] = useState(null);
   const [gastosEfectivo, setGastosEfectivo] = useState(0);
@@ -148,6 +150,20 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions, 
       toast.error("Error al retirar", { description: err.response?.data?.message || err.message });
     } finally {
       setSubmittingWithdraw(false);
+    }
+  };
+
+  const handleReprint = async (transactionId) => {
+    if (!transactionId || printingId) return;
+    setPrintingId(transactionId);
+    try {
+      const { data } = await api.get(`/transactions/${transactionId}`);
+      await enqueuePrint(data);
+      toast.success("Ticket enviado a la impresora");
+    } catch (error) {
+      toast.error("No se pudo imprimir el ticket", { description: error.response?.data?.message || error.message });
+    } finally {
+      setPrintingId(null);
     }
   };
 
@@ -292,6 +308,11 @@ export function InicioView({ isCajaOpen, onOpenCaja, onCloseCaja, transactions, 
                       <span className="text-foreground/80 font-bold text-xs block">{new Date(log.date.replace(" ", "T")).toLocaleDateString("es-AR")}</span>
                       <span className="text-foreground/60 font-medium text-[10px]">{new Date(log.date.replace(" ", "T")).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
                     </div>
+                    {log.transactionId && (
+                      <button onClick={() => handleReprint(log.transactionId)} disabled={printingId === log.transactionId} className="shrink-0 text-primary hover:text-secondary disabled:text-foreground/50 p-2 text-xs font-bold flex items-center gap-1" title="Reimprimir ticket">
+                        <Printer size={16} /> {printingId === log.transactionId ? "Imprimiendo..." : ""}
+                      </button>
+                    )}
                   </div>
                   );
                 })

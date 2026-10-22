@@ -12,6 +12,7 @@ import { hasPackSale, lineIdFor, packSizeOf, packTypeLabel, unitsEachOf, unitsIn
 import { formatCatalogPrice } from "../../utils/price.js";
 import { ACCOUNT_METHOD_NAME } from "../constants.js";
 import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
+import { enqueuePrint } from "../../services/thermalPrinter.js";
 
 import { OpenCajaModal } from "./OpenCajaModal.jsx";
 
@@ -208,7 +209,7 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
     };
 
     try {
-      await onAddTransaction(transaction);
+      const saved = await onAddTransaction(transaction);
       toast.success("Venta procesada exitosamente", {
         description: accountTotal > 0
           ? `Cobrado ahora: $${(finalTotal - accountTotal).toFixed(2)} · A cuenta: $${accountTotal.toFixed(2)}`
@@ -217,6 +218,12 @@ export function VentasView({ isCajaOpen, onAddTransaction, onSyncCaja, onOpenCaj
       setCartItems([]);
       setShowPaymentModal(false);
       fetchProducts();
+      if (meta.printSale) {
+        const printToast = toast.loading("Imprimiendo...");
+        enqueuePrint(saved).then(() => toast.success("Ticket enviado a la impresora", { id: printToast })).catch((printError) => {
+          toast.error("La venta fue registrada, pero no se pudo imprimir", { id: printToast, description: printError.message });
+        });
+      }
     } catch (err) {
       toast.error("No se pudo registrar la venta", { description: err.response?.data?.message || err.message });
       throw err;

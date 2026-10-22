@@ -76,14 +76,14 @@ export const StatsService = {
     const recentTxs = await db
       .select()
       .from(transactions)
-      .orderBy(desc(transactions.createdAt))
-      .limit(100);
+      .orderBy(desc(transactions.createdAt));
 
     for (const tx of recentTxs) {
       const items = await TransactionModel.findItemsByTransactionId(tx.id);
       const itemSummary = items.map((i) => `${i.quantity}x ${i.productName}`).join(", ");
       logs.push({
         id: `tx-${tx.id}`,
+        transactionId: tx.id,
         type: "Venta",
         details: itemSummary
           ? `$${Number(tx.total).toFixed(2)} — ${itemSummary}`
@@ -174,7 +174,7 @@ export const StatsService = {
       return da < db2 ? 1 : da > db2 ? -1 : 0;
     });
 
-    return logs.slice(0, 100);
+    return logs;
   },
 
   async createStockModification({ productId, productName, oldStock, newStock }) {

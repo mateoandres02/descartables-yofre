@@ -14,6 +14,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
   const [accountAmount, setAccountAmount] = useState("");
   const [customer, setCustomer] = useState(null);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [printSale, setPrintSale] = useState(false);
 
   const applyDiscount = () => {
     const val = parseFloat(discountInput);
@@ -149,7 +150,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
         });
       }
 
-      await onConfirm(finalPayments, { customerId: customer?.id ?? null });
+      await onConfirm(finalPayments, { customerId: customer?.id ?? null, printSale });
     } finally {
       setSubmitting(false);
     }
@@ -268,6 +269,11 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
               </div>
             )}
           </div>
+
+          <label className="flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-xl p-4 cursor-pointer">
+            <input type="checkbox" checked={printSale} onChange={(e) => setPrintSale(e.target.checked)} className="w-4 h-4 accent-primary" />
+            <span className="text-foreground font-bold text-sm">¿Desea imprimir esta venta?</span>
+          </label>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -436,7 +442,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
             className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 disabled:cursor-not-allowed text-foreground font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-secondary/20"
           >
             <Printer size={20} />
-            {submitting ? "Registrando..." : change > 0 ? `Confirmar — Dar vuelto $${change.toFixed(2)}` : "Confirmar e Imprimir Ticket"}
+            {submitting ? "Registrando..." : change > 0 ? `Confirmar — Dar vuelto $${change.toFixed(2)}` : "Confirmar venta"}
           </button>
         </div>
       </div>

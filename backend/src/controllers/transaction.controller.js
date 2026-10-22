@@ -20,4 +20,9 @@ export const TransactionController = {
       sendControllerError(res, err);
     }
   },
+
+  async getById(req, res) {
+    try { res.json(await TransactionService.getById(Number(req.params.id))); }
+    catch (err) { sendControllerError(res, err); }
+  },
 };

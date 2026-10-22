@@ -1,11 +1,57 @@
 import { useState, useEffect, useMemo } from "react";
-import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Bookmark, Layers, Percent, Package } from "lucide-react";
+import { CreditCard, Receipt, Plus, Trash2, Edit2, Tag, X, AlertTriangle, Bookmark, Layers, Percent, Package, Printer, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
 import { PaginationBar, paginate, byNameEs } from "./PaginationBar.jsx";
+import { getPrinterStatus, printTest, setSelectedPrinter } from "../../services/thermalPrinter.js";
 
 const CONFIG_PAGE_SIZE = 8;
+
+function PrinterPanel() {
+  const [status, setStatus] = useState({ connected: false, printers: [], selected: "" });
+  const [checking, setChecking] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const refresh = async () => {
+    setChecking(true);
+    const next = await getPrinterStatus();
+    setStatus(next);
+    setChecking(false);
+  };
+  useEffect(() => { refresh(); }, []);
+  const select = (event) => {
+    setSelectedPrinter(event.target.value);
+    setStatus((current) => ({ ...current, selected: event.target.value, selectedAvailable: true }));
+  };
+  const test = async () => {
+    setTesting(true);
+    try { await printTest(); toast.success("Ticket de prueba enviado a la impresora"); }
+    catch (error) { toast.error("No se pudo imprimir la prueba", { description: error.message }); }
+    finally { setTesting(false); }
+  };
+
+  return (
+    <div className="bg-surface rounded-xl border border-foreground/15 overflow-hidden shadow-sm flex flex-col">
+      <div className="p-6 border-b border-foreground/15 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3"><Printer className="text-foreground" size={24} /><div><h2 className="text-primary text-xl font-bold">Impresora térmica</h2><p className="text-foreground/60 font-medium text-xs mt-0.5">Configuración local para tickets de 58 mm</p></div></div>
+        <button onClick={refresh} disabled={checking} className="p-2 bg-elevated rounded-lg text-primary disabled:opacity-50" title="Actualizar impresoras"><RefreshCw size={18} className={checking ? "animate-spin" : ""} /></button>
+      </div>
+      <div className="p-6 space-y-4">
+        <p className={`text-sm font-bold ${status.connected ? "text-success" : "text-red-500"}`}>{status.connected ? "QZ Tray conectado" : "QZ Tray no conectado"}</p>
+        {!status.connected && <p className="text-foreground/70 text-xs font-medium">Instalá y abrí QZ Tray en esta computadora. Para imprimir sin diálogos, el servidor también debe tener el certificado confiable configurado.</p>}
+        <label className="block text-foreground/80 font-bold text-sm">Impresora</label>
+        <select value={status.selected} onChange={select} disabled={!status.connected} className="w-full bg-elevated text-foreground font-bold rounded-lg px-3 py-3 border border-foreground/15 disabled:opacity-50">
+          <option value="">Seleccionar impresora…</option>
+          {status.printers.map((printer) => <option key={printer} value={printer}>{printer}</option>)}
+        </select>
+        <button onClick={test} disabled={!status.connected || !status.selected || testing} className="w-full bg-secondary hover:brightness-125 disabled:bg-elevated disabled:text-foreground/50 text-foreground font-bold py-3 rounded-lg flex items-center justify-center gap-2">
+          <Printer size={18} /> {testing ? "Imprimiendo..." : "Imprimir prueba"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function PagedConfigList({ items, empty, renderItem }) {
   const [page, setPage] = useState(1);
@@ -391,6 +437,8 @@ export function ConfiguracionView() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+
+        <PrinterPanel />
 
         <PriceGroupPanel
           title="Proveedores"

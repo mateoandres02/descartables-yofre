@@ -147,4 +147,14 @@ export const TransactionService = {
 
     return result;
   },
+
+  async getById(id) {
+    const tx = await TransactionModel.findById(id);
+    if (!tx) throw { status: 404, message: "Venta no encontrada." };
+    const [payments, items] = await Promise.all([
+      TransactionModel.findPaymentsByTransactionId(tx.id),
+      TransactionModel.findItemsByTransactionId(tx.id),
+    ]);
+    return { ...tx, payments, items };
+  },
 };
