@@ -20,7 +20,7 @@ public static class SilentTicketPrinter {
 
       string documentName = "Ticket Yofre " + DateTime.Now.ToString("yyyyMMdd-HHmmss-fff");
       string[] lines = text.Replace("\r\n", "\n").Split('\n');
-      int paperHeight = Math.Max(300, Math.Min(12000, lines.Length * 18 + 80));
+      int paperHeight = Math.Max(360, Math.Min(12000, lines.Length * 23 + 100));
 
       document.DocumentName = documentName;
       document.PrintController = new StandardPrintController();
@@ -29,16 +29,18 @@ public static class SilentTicketPrinter {
       document.OriginAtMargins = true;
 
       document.PrintPage += delegate(object sender, PrintPageEventArgs e) {
-        using (Font regular = new Font("Consolas", 7.0f, FontStyle.Regular))
-        using (Font bold = new Font("Consolas", 7.0f, FontStyle.Bold))
+        using (Font bold = new Font("Consolas", 8.5f, FontStyle.Bold))
         using (StringFormat format = new StringFormat(StringFormat.GenericTypographic)) {
           format.FormatFlags |= StringFormatFlags.NoWrap;
+          // Texto sin suavizado: los puntos negros se imprimen enteros y con más contraste.
+          e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.SingleBitPerPixelGridFit;
           float y = 0;
-          float lineHeight = regular.GetHeight(e.Graphics) + 1;
+          float lineHeight = bold.GetHeight(e.Graphics) + 2;
           float width = e.MarginBounds.Width;
           for (int i = 0; i < lines.Length; i++) {
-            Font font = i == 0 ? bold : regular;
-            e.Graphics.DrawString(lines[i], font, Brushes.Black, new RectangleF(0, y, width, lineHeight), format);
+            e.Graphics.DrawString(lines[i], bold, Brushes.Black, new RectangleF(0, y, width, lineHeight), format);
+            // Segunda pasada, apenas desplazada: incrementa el grosor de los trazos térmicos.
+            e.Graphics.DrawString(lines[i], bold, Brushes.Black, new RectangleF(0.20f, y + 0.20f, width, lineHeight), format);
             y += lineHeight;
           }
           e.HasMorePages = false;
