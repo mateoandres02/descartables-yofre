@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import api from "../../services/api.js";
 import { Loader } from "./Loader.jsx";
+import { CustomerPickerModal } from "./CustomerPickerModal.jsx";
 
 function formatDateTime(value) {
   if (!value) return "-";
@@ -38,6 +39,7 @@ export function CuentasCorrientesView() {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [paymentModal, setPaymentModal] = useState(null); // { amount, methodName }
   const [submitting, setSubmitting] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -320,12 +322,20 @@ export function CuentasCorrientesView() {
     <div className="flex-1 p-4 pb-20 md:p-8 overflow-y-auto relative">
       {loading && <Loader />}
 
-      <div className="mb-6 md:mb-8">
-        <h1 className="text-foreground font-bold text-2xl md:text-4xl mb-1 md:mb-2 flex items-center gap-3">
-          <NotebookPen className="text-secondary" size={30} />
-          Cuentas Corrientes
-        </h1>
-        <p className="text-foreground/80 font-medium text-sm">Deudas de clientes, historial y cobros</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8">
+        <div>
+          <h1 className="text-foreground font-bold text-2xl md:text-4xl mb-1 md:mb-2 flex items-center gap-3">
+            <NotebookPen className="text-secondary" size={30} />
+            Cuentas Corrientes
+          </h1>
+          <p className="text-foreground/80 font-medium text-sm">Deudas de clientes, historial y cobros</p>
+        </div>
+        <button
+          onClick={() => setShowCustomerModal(true)}
+          className="bg-secondary hover:brightness-125 text-foreground font-bold px-5 py-3 rounded-xl transition-all shadow-md shrink-0 self-end sm:self-auto"
+        >
+          + Nuevo cliente
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
@@ -349,6 +359,17 @@ export function CuentasCorrientesView() {
           className="w-full bg-surface text-foreground placeholder-foreground/60 rounded-xl pl-12 pr-4 py-3 md:py-4 border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all font-medium"
         />
       </div>
+
+      {showCustomerModal && (
+        <CustomerPickerModal
+          createOnly
+          onClose={() => setShowCustomerModal(false)}
+          onSelect={() => {
+            setShowCustomerModal(false);
+            fetchCustomers();
+          }}
+        />
+      )}
 
       {filtered.length === 0 ? (
         <p className="text-foreground/60 font-medium text-center py-12">

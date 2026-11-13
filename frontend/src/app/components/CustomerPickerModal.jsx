@@ -3,7 +3,7 @@ import { X, Search, UserPlus, IdCard } from "lucide-react";
 import { toast } from "sonner";
 import api from "../../services/api.js";
 
-export function CustomerPickerModal({ initialDocument = "", onClose, onSelect }) {
+export function CustomerPickerModal({ initialDocument = "", createOnly = false, onClose, onSelect }) {
   const [documentInput, setDocumentInput] = useState(initialDocument);
   const [searching, setSearching] = useState(false);
   const [customers, setCustomers] = useState([]);
@@ -16,6 +16,7 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
   const documentValue = documentInput.trim();
 
   useEffect(() => {
+    if (createOnly) return;
     let active = true;
 
     const loadCustomers = async () => {
@@ -33,7 +34,7 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
 
     loadCustomers();
     return () => { active = false; };
-  }, []);
+  }, [createOnly]);
 
   const matchingCustomers = useMemo(() => {
     const term = documentValue.toLocaleLowerCase();
@@ -94,6 +95,10 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
       toast.error("Nombre y apellido son requeridos");
       return;
     }
+    if (!documentValue) {
+      toast.error("El documento es requerido.");
+      return;
+    }
     setCreating(true);
     try {
       const { data } = await api.post("/customers", {
@@ -122,10 +127,10 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
-      <div className="bg-background rounded-2xl w-full max-w-md border border-surface shadow-2xl max-h-[92vh] flex flex-col">
-        <div className="p-6 border-b border-surface flex items-center justify-between">
+      <div className="bg-background rounded-2xl w-full max-w-md max-h-[92dvh] flex flex-col border border-surface shadow-2xl">
+        <div className="p-6 border-b border-surface flex items-center justify-between shrink-0">
           <h2 className="text-primary font-bold text-xl flex items-center gap-2">
-            <IdCard size={22} /> Cliente de la cuenta
+            <IdCard size={22} /> {createOnly ? "Nuevo cliente" : "Cliente de la cuenta"}
           </h2>
           <button onClick={onClose} className="text-foreground/60 hover:text-foreground transition-colors">
             <X size={22} />
@@ -134,25 +139,25 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
 
         <div className="p-6 space-y-4 overflow-y-auto">
           <div>
-            <label className="text-foreground/80 font-bold text-sm block mb-2">Nombre, apellido o DNI</label>
+            <label className="text-foreground/80 font-bold text-sm block mb-2">{createOnly ? "DNI / Documento" : "Nombre, apellido o DNI"}</label>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={documentInput}
                 onChange={(e) => { setDocumentInput(e.target.value); resetSearch(); }}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                onKeyDown={(e) => !createOnly && e.key === "Enter" && handleSearch()}
                 autoFocus
-                placeholder="Ej. Juan Pérez o 30123456"
-                className="flex-1 bg-surface text-foreground placeholder-foreground/50 font-bold rounded-xl px-4 py-3 border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
+                placeholder={createOnly ? "Ej. 30123456" : "Ej. Juan Pérez o 30123456"}
+                className="min-w-0 flex-1 bg-surface text-foreground placeholder-foreground/50 font-bold rounded-xl px-4 py-3 border border-foreground/15 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none shadow-sm transition-all"
               />
-              <button
+              {!createOnly && <button
                 onClick={handleSearch}
                 disabled={!documentValue || searching}
                 className="bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/40 text-foreground font-bold px-4 rounded-xl transition-all shadow-sm flex items-center gap-2"
               >
                 <Search size={18} />
                 {searching ? "..." : "Buscar"}
-              </button>
+              </button>}
             </div>
           </div>
 
@@ -172,7 +177,7 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
             </button>
           )}
 
-          {!found && !notFound && (
+          {!createOnly && !found && !notFound && (
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-foreground/80 font-bold text-sm">
@@ -214,14 +219,14 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
             </div>
           )}
 
-          {notFound && (
+          {(createOnly || notFound) && (
             <div className="space-y-4">
-              <div className="bg-primary/10 border border-primary/40 rounded-xl p-3 flex items-start gap-2">
+              {!createOnly && <div className="bg-primary/10 border border-primary/40 rounded-xl p-3 flex items-start gap-2">
                 <UserPlus size={18} className="text-secondary shrink-0 mt-0.5" />
                 <p className="text-foreground/80 font-medium text-sm">
                   No existe un cliente con ese documento. Completá los datos para crearlo.
                 </p>
-              </div>
+              </div>}
               <div>
                 <label className="text-foreground/80 font-bold text-sm block mb-2">Nombre</label>
                 <input
@@ -256,17 +261,17 @@ export function CustomerPickerModal({ initialDocument = "", onClose, onSelect })
           )}
         </div>
 
-        <div className="p-6 border-t border-surface flex gap-4">
+        <div className="p-6 border-t border-surface flex gap-4 shrink-0">
           <button onClick={onClose} className="flex-1 bg-surface hover:bg-primary/10 text-foreground font-bold py-3 rounded-xl transition-all shadow-sm">
             Cancelar
           </button>
-          {notFound ? (
+          {createOnly || notFound ? (
             <button
               onClick={handleCreate}
               disabled={creating}
               className="flex-1 bg-secondary hover:brightness-125 disabled:bg-surface disabled:text-foreground/50 text-foreground font-bold py-3 rounded-xl transition-all shadow-md"
             >
-              {creating ? "Creando..." : "Crear y usar"}
+              {creating ? "Creando..." : createOnly ? "Guardar cliente" : "Crear y usar"}
             </button>
           ) : (
             <button

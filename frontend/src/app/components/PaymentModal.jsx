@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { X, Printer, Tag, NotebookPen, IdCard } from "lucide-react";
-import { CustomerPickerModal } from "./CustomerPickerModal.jsx";
+import { X, Printer, Tag, NotebookPen } from "lucide-react";
+import { CustomerSelect } from "./CustomerSelect.jsx";
 import { ACCOUNT_METHOD_NAME } from "../constants.js";
 
 export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
@@ -13,7 +13,6 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
   const [accountEnabled, setAccountEnabled] = useState(false);
   const [accountAmount, setAccountAmount] = useState("");
   const [customer, setCustomer] = useState(null);
-  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [printSale, setPrintSale] = useState(false);
 
   const applyDiscount = () => {
@@ -82,7 +81,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
   // Con cuenta corriente el importe debe cerrar exacto: no hay vuelto sobre lo fiado
   const allCash = !accountEnabled && payments.every((p) => isCash(p.methodId));
   const canConfirm = accountEnabled
-    ? !!customer && accountBase > 0 && Math.abs(remainingBase) < 0.01
+    ? !!customer?.id && accountBase > 0 && Math.abs(remainingBase) < 0.01
     : allCash
       ? paidBaseTotal >= discountedTotal
       : Math.abs(remainingBase) < 0.01;
@@ -116,7 +115,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
   };
 
   const handleConfirm = async () => {
-    if (submitting) return;
+    if (submitting || !canConfirm) return;
     setSubmitting(true);
     try {
       const mapped = payments.map((p) => {
@@ -400,33 +399,7 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-foreground/80 font-bold text-sm block mb-2">Cliente</label>
-                  {customer ? (
-                    <div className="bg-background border border-foreground/15 rounded-lg p-3 flex items-center justify-between gap-3 shadow-sm">
-                      <div className="min-w-0">
-                        <p className="text-foreground font-bold truncate">{customer.name} {customer.lastName}</p>
-                        <p className="text-foreground/70 font-medium text-sm">
-                          DNI {customer.document} · deuda previa ${Number(customer.debt || 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => setShowCustomerPicker(true)}
-                        className="text-primary hover:text-foreground font-bold text-sm transition-colors shrink-0"
-                      >
-                        Cambiar
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => setShowCustomerPicker(true)}
-                      className="w-full bg-background hover:bg-surface text-foreground font-bold py-3 rounded-lg border border-foreground/15 transition-all shadow-sm flex items-center justify-center gap-2"
-                    >
-                      <IdCard size={18} />
-                      Buscar cliente o ver deudores
-                    </button>
-                  )}
-                </div>
+                <CustomerSelect value={customer} onChange={setCustomer} disabled={submitting} />
               </div>
             )}
           </div>
@@ -447,16 +420,6 @@ export function PaymentModal({ total, paymentMethods, onClose, onConfirm }) {
         </div>
       </div>
 
-      {showCustomerPicker && (
-        <CustomerPickerModal
-          initialDocument={customer?.document || ""}
-          onClose={() => setShowCustomerPicker(false)}
-          onSelect={(selected) => {
-            setCustomer(selected);
-            setShowCustomerPicker(false);
-          }}
-        />
-      )}
     </div>
   );
 }
